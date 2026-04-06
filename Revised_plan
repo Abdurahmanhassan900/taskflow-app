@@ -1,0 +1,1050 @@
+🚀 Secure Full-Stack Web Application — Revised Project Plan
+Free to Deploy · 4 Sprints · 8 Weeks Max
+Team: You (Cloud/DevOps/Security) · Abdul (Backend) · Munir (Frontend) · Himal (Integration & Testing) Cost: $0 — every tool and platform used here has a free tier that fully covers this project Timeline: 8 weeks (you can push this to 4–5 weeks if the team moves fast)
+
+What Changed From v1 (And Why)
+The original plan was production-enterprise grade. Impressive, but designed for a 6-month paid engineering team. Here's what was cut and what replaced it:
+
+Original	Replaced With	Why
+AWS ECS Fargate (~$10/mo)	Render.com free tier	Free, Docker-native, zero config
+AWS RDS (~$15/mo)	Supabase free tier (PostgreSQL)	Free, 500 MB, managed, has a dashboard
+AWS ALB (~$16/mo)	Handled by Render automatically	No cost, HTTPS included
+AWS NAT Gateway (~$32/mo)	Not needed	Biggest single cost eliminated
+Terraform	Removed (optional bonus)	Overkill for 8 weeks; adds a week of setup
+AWS WAF	Rate limiting in Express + Render DDoS protection	WAF costs money; Express rate limiting is free
+AWS Secrets Manager	Render environment variables + .env files	Free, built into the platform
+AWS CloudTrail	Not needed	Enterprise audit tool; irrelevant at this scale
+6 sprints × 2 weeks	4 sprints × 2 weeks	Keeps momentum, still ships a real product
+Staging + Production environments	One deployed environment	Two environments doubles the work for no learning benefit here
+Redis / ElastiCache	Not needed	No feature in this project requires a cache
+Multi-AZ RDS	Not applicable	Using Supabase which handles this
+What was kept:
+
+Docker (local development — this is still a core skill to demonstrate)
+GitHub Actions CI/CD pipeline (still fully automated)
+JWT authentication with refresh tokens
+Role-based access control
+Rate limiting
+Input validation
+HTTPS (handled automatically by Render and Vercel)
+Structured logging
+The same clean React + Node + PostgreSQL + TypeScript stack
+Table of Contents
+Free Deployment Stack
+System Architecture (Simplified)
+Technology Stack
+Team Roles
+Sprint Plan (4 × 2 Weeks)
+Detailed Task Breakdown
+GitHub Workflow
+Docker Setup (Local Dev)
+CI/CD Pipeline
+Security Plan (Simplified)
+Backend API Design
+Database Design
+Frontend Pages & Components
+Testing Strategy
+Milestones
+README Template
+Demo Video Checklist
+Definition of Done
+1. Free Deployment Stack
+Here is exactly where the application runs in production and exactly what it costs:
+
+Service	Platform	Free Tier Limit	Cost
+Frontend hosting	Vercel	Unlimited deploys, custom domain, HTTPS	$0
+Backend hosting	Render	1 web service, 512 MB RAM, auto-sleep after 15 min inactivity	$0
+Database	Supabase	1 project, 500 MB PostgreSQL, 2 GB bandwidth	$0
+CI/CD	GitHub Actions	2,000 minutes/month (public repo: unlimited)	$0
+Docker (local)	Docker Desktop	Free for personal/educational use	$0
+Domain	[yourproject].vercel.app + [yourproject].onrender.com	Included	$0
+One known limitation of Render's free tier: The backend service "sleeps" after 15 minutes of inactivity. The first request after sleeping takes ~30 seconds to respond. This is fine for a project demo — just mention it in the README. If this bothers you, Render's paid tier is $7/month, which is the only cost you'd ever encounter here.
+
+How to avoid the sleep delay in your demo: Send a request to the backend URL 1 minute before starting the demo recording. It will be awake for the video.
+
+Sign-Up Checklist (Sprint 0, takes ~30 minutes total)
+[ ] Create a Vercel account (sign in with GitHub)
+[ ] Create a Render account (sign in with GitHub)
+[ ] Create a Supabase account (sign in with GitHub)
+[ ] Ensure all four team members are added as collaborators to the GitHub repository
+2. System Architecture (Simplified)
+┌─────────────────────────────────────────────────────┐
+│                   USER'S BROWSER                    │
+└───────────────────────┬─────────────────────────────┘
+                        │ HTTPS
+              ┌─────────▼──────────┐
+              │       Vercel        │  ← Serves React SPA
+              │  (Frontend/CDN)     │     Global CDN, auto HTTPS
+              └─────────┬──────────┘
+                        │ HTTPS API calls
+              ┌─────────▼──────────┐
+              │       Render        │  ← Runs Node.js/Express
+              │  (Backend API)      │     Docker container, auto HTTPS
+              └─────────┬──────────┘
+                        │ SSL connection
+              ┌─────────▼──────────┐
+              │      Supabase       │  ← Managed PostgreSQL
+              │    (Database)       │     Automatic backups, dashboard
+              └────────────────────┘
+
+Local Development (Docker Compose):
+  frontend (Vite dev server) → backend (Express) → postgres (Docker container)
+Why This Is Still Impressive
+This is the same architecture pattern used by thousands of real startups. Vercel, Render, and Supabase are all production-grade platforms used by real companies. The fact that they have free tiers does not make the architecture less valid — it makes you smart for using them. The skills being demonstrated (Docker, CI/CD, REST API design, auth, RBAC, testing) are identical regardless of whether the backend runs on Render or AWS ECS.
+
+3. Technology Stack
+Frontend
+Concern	Technology
+Framework	React 18 + TypeScript
+Build Tool	Vite
+Styling	Tailwind CSS
+State	Zustand (or React Context — team's choice)
+HTTP Client	Axios
+Forms & Validation	React Hook Form + Zod
+Routing	React Router v6
+Unit Tests	Vitest + React Testing Library
+E2E Tests	Playwright
+Backend
+Concern	Technology
+Runtime	Node.js 20
+Framework	Express.js + TypeScript
+ORM	Prisma
+Auth	JWT (access token + refresh token)
+Validation	Zod
+Rate Limiting	express-rate-limit
+Logging	Winston
+Tests	Jest + Supertest
+Database
+Concern	Technology
+Database	PostgreSQL (hosted on Supabase)
+ORM/Migrations	Prisma Migrate
+DevOps
+Concern	Technology
+Containers	Docker + Docker Compose (local dev)
+CI/CD	GitHub Actions
+Frontend Deploy	Vercel (auto-deploys on push to main)
+Backend Deploy	Render (Docker-based deploy)
+Database	Supabase (managed, no ops work needed)
+4. Team Roles
+You — DevOps & Security Lead
+Your role is leaner than v1 but still the most technically distinct on the team. You own everything that makes the project professional rather than just functional.
+
+What you own:
+
+Docker setup: write the Dockerfile for the backend and the docker-compose.yml for local development so every team member can run the full stack locally with one command
+GitHub repository configuration: branch protection, PR templates, required status checks, CODEOWNERS
+GitHub Actions CI/CD: write the workflows that auto-test on PR and auto-deploy on merge to main
+Render deployment setup: configure the backend web service on Render (connect GitHub repo, set environment variables, configure the Docker build)
+Vercel deployment setup: connect the frontend repo to Vercel, configure environment variables
+Supabase setup: create the project, copy the connection string, set up environment variables
+Security implementation: HTTPS enforcement (both platforms handle this automatically), security HTTP headers (add a headers middleware to Express), CORS configuration, rate limiting configuration, environment variable management (no secrets in code, ever)
+Monitoring: configure Render's built-in logging; write a CloudWatch-equivalent using Render's log streams and/or add a free Logtail/Betterstack integration for structured log viewing
+Be the person who resolves "it works on my machine" — that's what the Docker Compose setup is for
+What makes your work stand out:
+
+The CI/CD pipeline is your showpiece. A PR that automatically runs tests and blocks merging if they fail, then automatically deploys on merge to main, is genuinely impressive and something many junior developers have never set up.
+Security is your narrative. Be able to explain every security decision: why JWTs expire in 15 minutes, why refresh tokens are single-use, why CORS is restricted to the frontend origin, why rate limiting is on the auth routes.
+Abdul — Backend Lead
+What you own:
+
+Express + TypeScript project scaffold with clean folder structure
+Prisma schema, all database migrations
+All API endpoints (see Section 11)
+JWT authentication logic (register, login, refresh, logout)
+RBAC middleware
+Zod input validation on every endpoint
+Centralised error handling
+Rate limiting (using express-rate-limit)
+All backend tests (Jest unit tests for services, Supertest for routes)
+Munir — Frontend Lead
+What you own:
+
+React + Vite + TypeScript project scaffold
+Tailwind CSS design system (colours, typography, spacing defined in tailwind.config.js)
+All pages and components (see Section 13)
+React Router v6 setup with protected routes
+Auth flow (login, register, logout, token refresh via Axios interceptors)
+Connecting all pages to the real backend API
+Client-side form validation
+Responsive design (mobile and desktop)
+Loading states, error states, empty states for every async operation
+Frontend tests (Vitest + React Testing Library)
+Himal — Integration, Testing & Documentation Lead
+What you own:
+
+API contract document (written in Sprint 0, before coding begins)
+MSW mock server so Munir can develop frontend without waiting for the real backend
+Docker Compose file for local full-stack development
+Playwright E2E test suite for all critical user journeys
+Test coverage configuration and CI enforcement
+Full README
+DEPLOYMENT.md (how to set up the project from scratch)
+Bug triage: find integration bugs, open GitHub issues, verify fixes
+Demo video coordination
+5. Sprint Plan
+4 Sprints × 2 Weeks = 8 Weeks Each sprint has a single, clear goal. At the end of every sprint, the application should be in a working, deployable state — not broken mid-feature.
+
+Sprint 0 (Days 1–3) — Setup Week
+Not a full sprint — just a few days to get everyone unblocked.
+
+Task	Owner
+Create GitHub repo, add all team members	You
+Set up branch protection on main (require PR + green CI)	You
+Add PR template to .github/PULL_REQUEST_TEMPLATE.md	You
+Create Vercel, Render, Supabase accounts	You
+Write docker-compose.yml for local development	You
+Write backend Dockerfile	You + Abdul
+Scaffold backend project (Express + TS, folder structure, health endpoint)	Abdul
+Scaffold frontend project (Vite + React + TS + Tailwind)	Munir
+Write API contract v1 for all Sprint 1 endpoints	Himal + Abdul
+Set up MSW for all Sprint 1 endpoints	Himal
+Set up Playwright and write one smoke test	Himal
+Agree on application domain (see note below)	All
+Team meeting: walk through this document together	All
+Domain note: The easiest domain to build quickly is a Task Manager (create/assign/complete tasks). It covers all the required functionality (auth, CRUD, roles) without needing complex business logic. If the team wants something more interesting: a Team Expense Tracker or a Simple Bug Tracker work equally well. Avoid domains that require third-party APIs (maps, payments, emails) unless that's specifically interesting to someone — those integrations eat time.
+
+Sprint 1 (Weeks 1–2) — Auth & Skeleton
+Goal: Users can register and log in. The application is live at a real URL. All the plumbing works.
+
+Task	Owner
+Write GitHub Actions ci.yml (lint + test on PR)	You
+Configure Render deployment (connect repo, set env vars, Docker build)	You
+Configure Vercel deployment (connect repo, set env vars)	You
+Configure Supabase project, copy connection string to Render env vars	You
+Add security headers middleware to Express	You
+Add CORS middleware (restricted to Vercel frontend URL)	You
+Backend: POST /auth/register — bcrypt hash, create user, return tokens	Abdul
+Backend: POST /auth/login — verify credentials, return tokens	Abdul
+Backend: POST /auth/refresh — validate refresh token, rotate	Abdul
+Backend: POST /auth/logout — delete refresh token	Abdul
+Backend: JWT middleware for protected routes	Abdul
+Backend: RBAC middleware (requireRole)	Abdul
+Backend: Prisma schema (User, RefreshToken), run first migration on Supabase	Abdul
+Frontend: LoginPage UI + wired to real API	Munir
+Frontend: RegisterPage UI + wired to real API	Munir
+Frontend: Axios instance with auth header + refresh interceptor	Munir
+Frontend: Auth context (useAuth hook)	Munir
+Frontend: ProtectedRoute component	Munir
+Frontend: Dashboard page stub (just "Welcome, [name]")	Munir
+E2E test: register → land on dashboard	Himal
+E2E test: login → land on dashboard	Himal
+E2E test: wrong password → see error	Himal
+Sprint 1 done when: A new user can register and log in on the live Vercel URL. The backend is running on Render. The CI pipeline blocks merges if tests fail.
+
+Sprint 2 (Weeks 3–4) — Core Features
+Goal: All the main functionality of the app is working end-to-end.
+
+Task	Owner
+Add rate limiting to auth routes (10 req/min/IP)	You + Abdul
+Configure Render log streaming / add Logtail free tier for structured logs	You
+Backend: core entity CRUD endpoints (create, read, list, update, delete)	Abdul
+Backend: Zod validation on all endpoints	Abdul
+Backend: centralised error handler	Abdul
+Backend: pagination on list endpoints (page + limit)	Abdul
+Backend: ownership check (users can only modify their own resources)	Abdul
+Frontend: Dashboard with real data list	Munir
+Frontend: Create entity form (modal or new page)	Munir
+Frontend: Edit entity form	Munir
+Frontend: Delete with confirmation	Munir
+Frontend: Loading skeletons and error states	Munir
+Frontend: Toast notifications (success/error)	Munir
+Frontend: RoleGate component (hide admin UI from regular users)	Munir
+E2E test: create → appears in list	Himal
+E2E test: edit → update reflected	Himal
+E2E test: delete → removed from list	Himal
+Integration sync: run full E2E suite against live staging URL	Himal
+Sprint 2 done when: A logged-in user can perform all CRUD operations on the main resource. Role-based UI hiding works.
+
+Sprint 3 (Weeks 5–6) — Polish & Security
+Goal: The app looks good, feels good, handles edge cases, and passes a basic security review.
+
+Task	Owner
+Security review: manually test each endpoint for missing auth, IDOR, validation bypass	You + Himal
+Fix all issues found in security review	Abdul
+Final CORS, rate limiting, and header audit	You
+Backend: admin-only endpoints (list users, change roles)	Abdul
+Backend: add X-Request-ID header to every response	Abdul
+Backend: write Jest unit tests for all service functions	Abdul
+Backend: write Supertest integration tests for all routes	Abdul
+Frontend: Admin page (list users, change user role)	Munir
+Frontend: Profile page (view + update own profile, change password)	Munir
+Frontend: full responsive design pass (mobile + desktop)	Munir
+Frontend: 404 page and React error boundary	Munir
+Frontend: Accessibility pass (ARIA labels, keyboard navigation)	Munir
+Frontend: Vitest component tests for all major components	Munir
+Check test coverage, write missing tests	Himal
+Update README with architecture diagram, features, security section	Himal
+Run a basic load test (use a free tool like k6 or artillery)	Himal
+Sprint 3 done when: Test coverage is above 60%. Security review findings are resolved. The app looks polished on mobile. The README is mostly complete.
+
+Sprint 4 (Weeks 7–8) — Final & Demo
+Goal: Everything is clean, documented, and demo-ready.
+
+Task	Owner
+Final security scan: check for any exposed env vars, open endpoints, debug code	You
+Ensure CI/CD pipeline is fully green	You
+Final README review and polish	All
+Clean up commit history: no debug logs, no TODO comments, no commented-out code	All
+Ensure every team member has meaningful commits in the repo	All
+Final Playwright E2E run against production URL	Himal
+Record demo video	All
+Tag v1.0.0 on GitHub	Himal
+Add live URL and video link to README	Himal
+6. Detailed Task Breakdown
+Your Master Task List (DevOps & Security)
+Repository & Setup
+[ ] Create GitHub repository; add Abdul, Munir, Himal as collaborators
+[ ] Create .github/PULL_REQUEST_TEMPLATE.md
+[ ] Create .github/CODEOWNERS file (you own /infra and .github, Abdul owns /backend, Munir owns /frontend, Himal owns /docs)
+[ ] Enable branch protection on main: require PR, require CI to pass, require 1 approval
+[ ] Add .gitignore covering .env, node_modules, dist, .DS_Store
+[ ] Add .env.example files for both backend and frontend (placeholder values, gitignored real .env files)
+Docker & Local Dev
+[ ] Write backend/Dockerfile (multi-stage: build TypeScript, then production Node image)
+[ ] Write docker-compose.yml at project root: backend service, postgres service with health check, frontend service (optional — Vite runs natively fast enough)
+[ ] Test: run docker compose up --build and confirm backend reaches PostgreSQL
+[ ] Write a Makefile or scripts/setup.sh so any team member can run make setup to get started
+CI/CD
+[ ] Write .github/workflows/ci.yml:
+Triggers on: pull_request to main
+Jobs: lint + test backend, lint + test + build frontend
+Fails the PR if any job fails
+[ ] Write .github/workflows/deploy.yml:
+Triggers on: push to main
+Jobs: build and push Docker image to Render (via Render deploy hook URL stored as a GitHub secret), trigger Vercel redeploy (automatic via Vercel's GitHub integration)
+[ ] Store all secrets in GitHub Actions secrets (never in code): RENDER_DEPLOY_HOOK_URL, VITE_API_URL
+Security
+[ ] Add helmet npm package to Express backend — sets all security headers automatically
+[ ] Add CORS middleware: allow only the Vercel frontend URL (set as environment variable ALLOWED_ORIGIN)
+[ ] Configure express-rate-limit: 100 req/min global, 10 req/min on /auth/login and /auth/register
+[ ] Verify HTTPS is working on both Vercel URL and Render URL (both handle this automatically)
+[ ] Add npm audit check to CI pipeline — fails build if high-severity vulnerabilities found
+[ ] Write a SECURITY.md document explaining every security measure implemented
+Environment Variables
+Manage these for the team. Document in README under "Environment Variables" section.
+
+Backend (set in Render dashboard):
+
+DATABASE_URL=postgresql://...  (from Supabase)
+JWT_SECRET=...                 (generate: openssl rand -hex 32)
+JWT_REFRESH_SECRET=...         (generate: openssl rand -hex 32)
+ALLOWED_ORIGIN=https://your-app.vercel.app
+NODE_ENV=production
+PORT=3000
+Frontend (set in Vercel dashboard):
+
+VITE_API_URL=https://your-backend.onrender.com
+Abdul's Master Task List (Backend)
+Project Scaffold
+[ ] npm init, install dependencies: express, typescript, prisma, @prisma/client, bcrypt, jsonwebtoken, zod, express-rate-limit, helmet, cors, winston, morgan
+[ ] Configure tsconfig.json (strict mode on)
+[ ] Set up folder structure:
+backend/src/├── routes/       ← route definitions├── controllers/  ← handle request/response├── services/     ← business logic├── middleware/   ← auth, rbac, validation, error handler├── utils/        ← logger, token helpers└── index.ts      ← server entry point
+[ ] Implement GET /health — returns { status: "ok" } (ALB/Render uses this)
+Prisma & Database
+[ ] npx prisma init; set DATABASE_URL to Supabase connection string
+[ ] Define Prisma schema (see Section 12 for the schema)
+[ ] npx prisma migrate dev --name init to create and apply the first migration
+[ ] Test that Prisma can connect and query locally
+Authentication
+[ ] POST /api/v1/auth/register:
+Validate body with Zod (email, password min 8 chars, full_name)
+Check email not already taken (return 409 if so)
+Hash password with bcrypt (10 salt rounds)
+Create user in DB
+Issue access token (15 min) and refresh token (7 days)
+Store refresh token hash in DB
+Return { accessToken, user: { id, email, fullName, role } }
+[ ] POST /api/v1/auth/login:
+Validate body
+Look up user by email (return 401 if not found — don't say "email not found")
+Compare password with bcrypt
+Issue new tokens, store refresh token hash
+Return same shape as register
+[ ] POST /api/v1/auth/refresh:
+Read refresh token from request body (or httpOnly cookie — team's choice)
+Hash it, look up in DB, check not expired
+Delete old token, issue new tokens (rotation)
+Return new access token
+[ ] POST /api/v1/auth/logout:
+Require valid access token
+Delete refresh token from DB
+Return 204
+[ ] GET /api/v1/auth/me:
+Require valid access token
+Return current user profile
+[ ] JWT middleware: verify Authorization: Bearer <token> header, attach req.user
+[ ] RBAC middleware: requireRole('ADMIN') — returns 403 if user role doesn't match
+Core CRUD (example: Tasks)
+[ ] Prisma schema for Task (see Section 12)
+[ ] GET /api/v1/tasks — list tasks (user sees own tasks, admin sees all), paginated
+[ ] POST /api/v1/tasks — create task, set owner_id = req.user.id
+[ ] GET /api/v1/tasks/:id — get one task (check ownership or admin)
+[ ] PATCH /api/v1/tasks/:id — update task (check ownership or admin)
+[ ] DELETE /api/v1/tasks/:id — soft delete (set deleted_at), check ownership
+[ ] Zod validation schema for task create and update
+[ ] Filter queries: ?status=TODO, ?priority=HIGH
+Admin Endpoints
+[ ] GET /api/v1/admin/users — list all users (admin only)
+[ ] PATCH /api/v1/admin/users/:id/role — change user role (admin only)
+Error Handling & Logging
+[ ] Centralised error handler middleware (last middleware in the chain)
+[ ] Log every request with morgan (writes to Winston)
+[ ] Never return stack traces or internal error details to the client in production
+[ ] Log format: { timestamp, level, requestId, userId, method, path, status, durationMs, message }
+Tests
+[ ] Jest unit tests for: authService.register, authService.login, taskService.create, taskService.getById (at minimum)
+[ ] Supertest integration tests for every endpoint group (auth, tasks, admin)
+[ ] At minimum test: happy path, missing auth (401), wrong role (403), invalid body (400)
+Munir's Master Task List (Frontend)
+Project Scaffold
+[ ] npm create vite@latest frontend -- --template react-ts
+[ ] Install Tailwind CSS, configure tailwind.config.js with custom brand colours and fonts
+[ ] Install dependencies: axios, react-router-dom, react-hook-form, zod, @hookform/resolvers, zustand, react-hot-toast
+[ ] Configure ESLint + Prettier
+[ ] Create base component library in src/components/ui/: Button, Input, Card, Modal, Spinner, Badge, Alert
+[ ] Create AppLayout (sidebar + topbar + content) and AuthLayout (centred card) shells
+Auth Flow
+[ ] Create Axios instance (src/lib/axios.ts) with base URL from VITE_API_URL
+[ ] Add request interceptor: attach Authorization: Bearer <token> header from in-memory store
+[ ] Add response interceptor: on 401, call /auth/refresh, store new token, retry original request; on second 401, redirect to /login
+[ ] useAuth hook: provides user, login(email, password), register(...), logout(), isAuthenticated
+[ ] Store access token in memory (a Zustand store, not localStorage — more secure against XSS)
+[ ] ProtectedRoute component: wraps routes that require auth; redirects to /login if not authenticated
+[ ] RoleGate component: <RoleGate role="ADMIN">...</RoleGate> — renders children only if user has the required role
+Pages
+[ ] /login — LoginPage: email + password form, "Don't have an account?" link, show API error inline
+[ ] /register — RegisterPage: name + email + password form, show API error inline
+[ ] /dashboard — DashboardPage: overview stats (total tasks, by status), list of recent tasks
+[ ] /tasks — TaskListPage: full list with filters (status, priority), pagination, "New Task" button
+[ ] /tasks/new — CreateTaskPage (or modal): form for new task
+[ ] /tasks/:id — TaskDetailPage: view + edit task inline
+[ ] /profile — ProfilePage: show name + email, form to change password
+[ ] /admin/users — UsersPage (admin only): list users, button to change role
+[ ] /404 — NotFoundPage: friendly message, link back to dashboard
+UX Requirements
+[ ] Every page that loads data must show a loading skeleton (not just a spinner)
+[ ] Every page that can be empty must show an empty state with a helpful message (not a blank white area)
+[ ] Every form error must appear inline next to the field (not just a toast)
+[ ] Every mutating action (create, update, delete) must show a success toast
+[ ] Every failed API call must show an error toast (but not expose technical details to the user)
+[ ] All pages must look good at 375px (mobile), 768px (tablet), and 1280px (desktop)
+Himal's Master Task List (Integration & Testing)
+Sprint 0 — API Contract
+[ ] Write docs/api-contract.md covering every endpoint: URL, method, auth required, request body, success response, error responses
+[ ] Get sign-off from Abdul (is it buildable?) and Munir (does it give you what you need?) before Sprint 1 begins
+[ ] Update the contract as the API evolves; date-stamp each revision
+MSW Mock Server
+[ ] Install msw in the frontend project
+[ ] Write handlers for every endpoint in the API contract
+[ ] Configure MSW to activate in development when VITE_USE_MSW=true
+[ ] Keep handlers updated as the API contract changes
+Docker Compose (Local Dev)
+[ ] Write docker-compose.yml:
+services:  backend:   (build from ./backend/Dockerfile)  postgres:  (postgres:15-alpine, with health check)
+[ ] Test: docker compose up → backend connects to postgres → GET /health returns 200
+[ ] Document the setup in docs/CONTRIBUTING.md — "how to run locally"
+Playwright E2E Tests
+[ ] npx playwright install; write playwright.config.ts pointing at the Vercel URL (or localhost:5173 for local runs)
+[ ] Use Page Object Model pattern: one file per page (LoginPage.ts, TasksPage.ts, etc.)
+[ ] Critical test scenarios to cover:
+Register a new account → land on dashboard
+Login with valid credentials → land on dashboard
+Login with wrong password → error message shown
+Create a task → task appears in list
+Edit a task → changes are reflected
+Delete a task → task is removed
+Log out → cannot access /dashboard (redirected to login)
+Admin user → can access /admin/users
+Regular user → /admin/users is not accessible (redirected or 403)
+[ ] Add npx playwright test as a final step in the CI pipeline (runs against Vercel preview URL)
+Coverage & Quality
+[ ] Configure Jest coverage thresholds in backend/jest.config.js:
+coverageThreshold: { global: { lines: 60, functions: 60 } }
+[ ] Configure Vitest coverage in frontend/vite.config.ts with same thresholds
+[ ] Add coverage commands to CI: npm run test:coverage — fails CI if below threshold
+Documentation
+[ ] README.md (template in Section 16)
+[ ] docs/DEPLOYMENT.md — step-by-step: clone repo → create accounts → set env vars → push to main → live
+[ ] docs/CONTRIBUTING.md — run locally, branch naming, PR process, commit format
+[ ] docs/TESTING.md — how to run unit tests, integration tests, E2E tests, view coverage
+[ ] CHANGELOG.md — updated at the end of each sprint
+7. GitHub Workflow
+Repository Structure
+/
+├── backend/
+├── frontend/
+├── docs/
+│   ├── api-contract.md
+│   ├── DEPLOYMENT.md
+│   ├── CONTRIBUTING.md
+│   └── TESTING.md
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   └── deploy.yml
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── CODEOWNERS
+├── docker-compose.yml
+├── Makefile
+├── README.md
+└── CHANGELOG.md
+Branch Strategy
+main       ← Production. Protected. PR + green CI required. Auto-deploys to Render + Vercel.
+feature/*  ← Feature branches (branched from main, merged back via PR)
+fix/*      ← Bug fixes
+docs/*     ← Documentation only changes
+Keep it simple. A separate develop branch adds maintenance overhead for a 4-person team. Just work in feature branches and merge to main when ready.
+
+Commit Format (Conventional Commits)
+feat(auth): add JWT refresh token rotation
+fix(frontend): redirect to login on expired session
+docs(readme): add architecture diagram
+test(backend): add Supertest tests for tasks endpoint
+chore(ci): add coverage threshold to pipeline
+PR Template
+## What does this PR do?
+
+## Type of change
+- [ ] Feature
+- [ ] Bug fix
+- [ ] Documentation
+- [ ] Test
+
+## Testing done
+- [ ] Tests added / updated
+- [ ] Tested locally
+- [ ] No secrets in the code
+- [ ] No console.log left in
+8. Docker Setup (Local Dev)
+Backend Dockerfile
+# Stage 1: Build TypeScript
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npx prisma generate
+RUN npm run build
+
+# Stage 2: Production runtime
+FROM node:20-alpine AS production
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
+docker-compose.yml
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/appdb
+      JWT_SECRET: local-dev-secret-do-not-use-in-production
+      JWT_REFRESH_SECRET: local-dev-refresh-secret
+      ALLOWED_ORIGIN: http://localhost:5173
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app       # hot reload in dev
+      - /app/node_modules
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: appdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+Makefile (convenience commands)
+setup:
+	cp backend/.env.example backend/.env
+	cp frontend/.env.example frontend/.env
+	docker compose up --build -d
+	@echo "Backend: http://localhost:3000"
+	@echo "Frontend: run 'cd frontend && npm run dev'"
+
+up:
+	docker compose up -d
+
+down:
+	docker compose down
+
+logs:
+	docker compose logs -f backend
+
+migrate:
+	docker compose exec backend npx prisma migrate dev
+
+test-backend:
+	cd backend && npm test
+
+test-frontend:
+	cd frontend && npm test
+
+test-e2e:
+	npx playwright test
+9. CI/CD Pipeline
+ci.yml — Runs on every PR to main
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd backend && npm ci
+      - run: cd backend && npm run lint
+      - run: cd backend && npm run test:coverage
+      - run: cd backend && npm run build
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd frontend && npm ci
+      - run: cd frontend && npm run lint
+      - run: cd frontend && npm run test:coverage
+      - run: cd frontend && npm run build
+deploy.yml — Runs on push to main
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: curl -s "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+  # Frontend deploys automatically via Vercel's GitHub integration
+  # No step needed here — Vercel watches for pushes to main automatically
+How Render deploy hooks work: In Render dashboard → your service → Settings → Deploy Hook. Copy the URL. Add it as a GitHub secret RENDER_DEPLOY_HOOK_URL. That's it. One curl call triggers a full redeploy.
+
+10. Security Plan (Simplified)
+All the same security principles as v1, implemented with simpler tools.
+
+What's Handled Automatically By The Platform
+HTTPS: Both Vercel and Render provide HTTPS with auto-renewing TLS certificates. You do nothing except not break it.
+DDoS protection: Both platforms have basic DDoS mitigation built in.
+What You Implement in Express (Abdul + You)
+Security headers (one line, helmet npm package):
+
+import helmet from 'helmet';
+app.use(helmet()); // Sets X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, etc.
+CORS (restricted to frontend origin):
+
+import cors from 'cors';
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN,  // e.g. https://your-app.vercel.app
+  credentials: true
+}));
+Rate limiting:
+
+import rateLimit from 'express-rate-limit';
+
+// Global: 100 requests per minute per IP
+app.use(rateLimit({ windowMs: 60_000, max: 100 }));
+
+// Auth routes: 10 requests per minute per IP
+const authLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+Input validation (Zod, on every route):
+
+// Example route with validation middleware
+router.post('/tasks', authenticate, validate(createTaskSchema), createTask);
+
+// Validation middleware
+function validate(schema: ZodSchema) {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', details: result.error.errors } });
+    }
+    req.body = result.data;
+    next();
+  };
+}
+Password hashing:
+
+// Always bcrypt, never MD5/SHA, never store plaintext
+const hash = await bcrypt.hash(password, 10);
+const isValid = await bcrypt.compare(password, storedHash);
+JWT token security:
+
+Access tokens: 15-minute expiry, signed with JWT_SECRET
+Refresh tokens: 7-day expiry, opaque random string hashed before DB storage, single-use rotation
+Never put sensitive data in the JWT payload (no passwords, no payment info)
+Ownership checks on every resource operation:
+
+// Before updating or deleting a task:
+const task = await prisma.task.findUnique({ where: { id } });
+if (!task) return res.status(404).json({ error: 'Not found' });
+if (task.ownerId !== req.user.id && req.user.role !== 'ADMIN') {
+  return res.status(403).json({ error: 'Forbidden' });
+}
+What Himal Verifies (Security Review in Sprint 3)
+Go through each endpoint and check:
+
+[ ] Is the endpoint protected by the JWT middleware? (Try calling it without a token — should get 401)
+[ ] Is the RBAC correct? (Try calling an admin endpoint as a regular user — should get 403)
+[ ] Can a user access another user's resources? (Try calling /tasks/:id with a task owned by a different user — should get 403)
+[ ] Does the endpoint validate its input? (Send an empty body — should get 400, not 500)
+[ ] Does the error response leak internal details? (A 500 error should not return a stack trace)
+11. Backend API Design
+Base URL
+https://your-backend.onrender.com/api/v1
+Endpoints
+Auth — public (no token required)
+
+POST  /auth/register    body: { email, password, fullName }
+POST  /auth/login       body: { email, password }
+POST  /auth/refresh     body: { refreshToken }
+Auth — protected
+
+POST  /auth/logout      header: Authorization: Bearer <token>
+GET   /auth/me
+PATCH /auth/me/password body: { currentPassword, newPassword }
+Tasks — protected (all require JWT)
+
+GET    /tasks           query: ?page=1&limit=20&status=TODO&priority=HIGH
+POST   /tasks           body: { title, description?, status?, priority?, dueDate? }
+GET    /tasks/:id
+PATCH  /tasks/:id       body: (any task fields)
+DELETE /tasks/:id
+Admin — protected + ADMIN role
+
+GET    /admin/users
+PATCH  /admin/users/:id/role  body: { role: 'ADMIN' | 'MEMBER' }
+System
+
+GET    /health          → { status: "ok", uptime: 1234 }
+Standard Response Format
+// Success
+{ "data": { ... } }
+
+// Success list
+{ "data": [...], "meta": { "page": 1, "limit": 20, "total": 47 } }
+
+// Error
+{ "error": { "code": "VALIDATION_ERROR", "message": "Title is required" } }
+12. Database Design
+Prisma Schema (backend/prisma/schema.prisma)
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role     @default(MEMBER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  tasks         Task[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  ownerId     String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?  // soft delete
+
+  owner User @relation(fields: [ownerId], references: [id])
+}
+13. Frontend Pages & Components
+Route Map
+/             → redirect to /dashboard if auth, else /login
+/login        → LoginPage
+/register     → RegisterPage
+/dashboard    → DashboardPage   [PROTECTED]
+/tasks        → TaskListPage    [PROTECTED]
+/tasks/:id    → TaskDetailPage  [PROTECTED]
+/profile      → ProfilePage     [PROTECTED]
+/admin/users  → UsersPage       [PROTECTED + ADMIN]
+/*            → NotFoundPage
+Component File Structure
+frontend/src/
+├── components/
+│   ├── ui/
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── Card.tsx
+│   │   ├── Modal.tsx
+│   │   ├── Badge.tsx
+│   │   ├── Spinner.tsx
+│   │   └── Alert.tsx
+│   ├── layout/
+│   │   ├── AppLayout.tsx    (sidebar + topbar + outlet)
+│   │   └── AuthLayout.tsx   (centred card)
+│   └── auth/
+│       ├── ProtectedRoute.tsx
+│       └── RoleGate.tsx
+├── pages/
+│   ├── LoginPage.tsx
+│   ├── RegisterPage.tsx
+│   ├── DashboardPage.tsx
+│   ├── TaskListPage.tsx
+│   ├── TaskDetailPage.tsx
+│   ├── ProfilePage.tsx
+│   ├── UsersPage.tsx
+│   └── NotFoundPage.tsx
+├── services/
+│   ├── auth.service.ts
+│   └── task.service.ts
+├── store/
+│   └── authStore.ts
+├── hooks/
+│   └── useAuth.ts
+├── lib/
+│   └── axios.ts
+└── types/
+    └── index.ts
+14. Testing Strategy
+What To Test and Who Tests It
+Test Type	Tool	Owner	Minimum
+Backend unit (services)	Jest	Abdul	1 test file per service
+Backend integration (routes)	Supertest	Abdul	1 test file per route group
+Frontend components	Vitest + RTL	Munir	1 test per major component
+E2E (full user flows)	Playwright	Himal	9 critical scenarios (listed in Sprint 2)
+Coverage Target
+60% line coverage on both backend and frontend. This is realistic in 8 weeks for a team building their first full-stack project. It forces you to write tests without becoming a second full-time job.
+
+Running Tests
+# Backend
+cd backend
+npm test                  # run tests
+npm run test:coverage     # run with coverage report
+npm run test:watch        # watch mode during development
+
+# Frontend
+cd frontend
+npm test                  # run tests
+npm run test:coverage
+
+# E2E
+npx playwright test               # run all E2E tests
+npx playwright test --ui          # run with the Playwright UI (great for debugging)
+npx playwright show-report        # view the HTML test report
+15. Milestones
+Milestone	End of	Done When
+M0: Everyone is unblocked	Sprint 0 (Day 3)	Repo live, accounts set up, API contract written, everyone can run the project locally
+M1: Auth working on live URL	Sprint 1 (Week 2)	Register + login works at the Vercel URL; CI pipeline green
+M2: Full CRUD working	Sprint 2 (Week 4)	All core features work end-to-end on the live URL
+M3: Polished + tested	Sprint 3 (Week 6)	Security review done; tests above 60%; app looks good on mobile
+M4: Ship it	Sprint 4 (Week 8)	README complete; video recorded; v1.0.0 tagged; everyone proud of it
+16. README Template
+# [Project Name]
+
+> [One sentence: what it is and what it does]
+
+🌐 **Live App:** https://your-app.vercel.app
+📹 **Demo Video:** [link]
+📚 **API:** https://your-backend.onrender.com/api/v1
+
+---
+
+## Overview
+
+[2 paragraphs: what the app does and what engineering challenges it demonstrates]
+
+## Architecture
+
+[Paste a simple diagram like the one in Section 2 of this document]
+
+The frontend is a React SPA deployed on Vercel. The backend is a Node.js/Express API
+deployed on Render as a Docker container. The database is PostgreSQL hosted on Supabase.
+Everything is connected via HTTPS. Deployments are automated via GitHub Actions.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Backend | Node.js 20, Express, TypeScript, Prisma |
+| Database | PostgreSQL (Supabase) |
+| Auth | JWT (access + refresh tokens), bcrypt |
+| DevOps | Docker, GitHub Actions, Render, Vercel |
+
+## Features
+
+- User registration and login with JWT authentication
+- Role-based access control (Admin / Member)
+- Full CRUD for [your domain entity]
+- Admin panel: user management and role assignment
+- Responsive design (mobile + desktop)
+- Input validation on frontend and backend
+- Rate limiting on auth endpoints
+- Structured logging
+
+## Security
+
+- HTTPS enforced on all endpoints (Vercel + Render TLS)
+- Security headers set via `helmet` (HSTS, X-Frame-Options, etc.)
+- Passwords hashed with bcrypt (10 rounds)
+- JWT access tokens expire in 15 minutes; refresh tokens rotate on each use
+- CORS restricted to frontend origin only
+- Rate limiting: 100 req/min global, 10 req/min on auth routes
+- Ownership checks on all resource operations (prevents IDOR)
+- Input validated with Zod on all API routes
+- No secrets in source code — all environment variables
+
+## Getting Started
+
+### Prerequisites
+- Node.js 20+
+- Docker Desktop
+
+### Setup
+```bash
+git clone https://github.com/[org]/[repo]
+cd [repo]
+make setup        # copies .env.example files, starts Docker
+cd frontend && npm run dev
+Open http://localhost:5173
+
+Default Test Accounts
+Email	Password	Role
+admin@test.com	Password1!	Admin
+user@test.com	Password1!	Member
+Running Tests
+make test-backend    # Jest unit + integration tests
+make test-frontend   # Vitest component tests
+make test-e2e        # Playwright E2E tests
+Environment Variables
+See .env.example files in /backend and /frontend for required variables.
+
+Team
+Name	Role
+[You]	DevOps & Security
+Abdul	Backend
+Munir	Frontend
+Himal	Integration & Testing
+
+---
+
+## 17. Demo Video Checklist
+
+**Target length:** 6–8 minutes. Do not go longer — no one will watch it.
+
+**Script outline:**
+
+1. **Intro (30 seconds)** — "Here's what we built, here's the live URL, here's the team."
+2. **Architecture (1 minute)** — Show the diagram. Name Vercel, Render, Supabase. Show the GitHub Actions pipeline running.
+3. **User journey (3 minutes)**:
+   - Register a new account live in the browser
+   - Log in
+   - Create a task / entity
+   - Edit it, delete it
+   - Log out and show you can't get back in
+   - Log in as admin — show the admin panel
+4. **Security (1.5 minutes)**:
+   - Open DevTools → Network → show the JWT token in the Authorization header
+   - Show rate limiting: open Postman/curl, send 11 login requests, show 429 response
+   - Show security headers: DevTools → Network → Response Headers → show `Strict-Transport-Security`, `X-Content-Type-Options`
+5. **CI/CD (30 seconds)** — Show GitHub Actions: a green CI run on a merged PR.
+6. **Close (30 seconds)** — GitHub repo URL, live URL.
+
+**Practical tips:**
+- Record at 1920×1080. Use [OBS Studio](https://obsproject.com/) (free).
+- Do a dry run first — you will catch things that don't work when you're nervous.
+- Ping the Render backend URL a minute before recording so it's not asleep.
+
+---
+
+## 18. Definition of Done
+
+A task is "done" when:
+- [ ] Merged to `main` via a PR — not pushed directly
+- [ ] At least one other team member reviewed and approved the PR
+- [ ] CI checks pass (lint, tests, build)
+- [ ] No hardcoded secrets, debug `console.log`, or TODO comments in the merged code
+- [ ] Works on the live deployed URL after the auto-deploy completes
+
+---
+
+## Appendix: Keeping Momentum
+
+The #1 reason group projects fail is not technical — it is drift. Someone gets stuck, doesn't say anything, and blocks everyone else two weeks later. Here's how to avoid it:
+
+- **15-minute async standup, every weekday.** Use a WhatsApp group or a Discord server. Each person posts: "Done yesterday: X. Doing today: Y. Blocked: Z (or nothing)." If someone is blocked for more than 24 hours, the team helps.
+- **Never merge broken code to main.** The CI pipeline enforces this, but also — if your feature isn't ready, leave it in the feature branch. Main should always be deployable.
+- **Timebox perfectionism.** A feature that is 80% polished and shipped is better than a feature that is 100% perfect and still in a draft PR. You have 8 weeks.
+- **The API contract is sacred.** If Abdul needs to change an endpoint that Munir is already building against, the change goes through Himal first, who updates the contract and updates the MSW mock. Nobody discovers a breaking change at 11pm.
+
+---
+
+*Version 2.0 — Revised for free deployment and 8-week timeline*
