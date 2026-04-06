@@ -1,10 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-
-// Dummy components for demonstration
-const Login = () => <div><h2>Login Page</h2><p>Please log in</p></div>;
-const Register = () => <div><h2>Register Page</h2><p>Create an account</p></div>;
-const Dashboard = () => <div><h2>Dashboard</h2><p>Welcome to the protected dashboard!</p></div>;
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { Dashboard } from './pages/Dashboard';
+import { NotFound } from './pages/NotFound';
 
 function App() {
   return (
@@ -19,6 +18,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
     </Router>
