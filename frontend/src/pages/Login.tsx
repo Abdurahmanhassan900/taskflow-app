@@ -4,32 +4,19 @@ import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
-import { useAuthStore } from '../store/authStore';
 
 export const Login = (): ReactElement => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading, error } = useAuth();
-  const { setAuth } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Attempt real login first
     const success = await login({ email, password });
 
     if (success) {
-      navigate('/dashboard');
-    } else {
-      // Mock fallback if API fails
-      console.warn('API login failed, using mock auth fallback');
-      setAuth('mock-jwt-token-123', {
-        id: '1',
-        email,
-        fullName: 'Mock User',
-        role: 'MEMBER'
-      });
       navigate('/dashboard');
     }
   };
@@ -52,7 +39,7 @@ export const Login = (): ReactElement => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="p-3 bg-red-50 text-red-500 rounded text-sm">
-              {error} (Using mock fallback instead)
+              {error}
             </div>
           )}
           <div className="space-y-4">
