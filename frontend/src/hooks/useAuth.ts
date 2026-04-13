@@ -7,7 +7,7 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
@@ -15,15 +15,20 @@ export const useAuth = () => {
       const { accessToken, user } = response.data;
       setAuth(accessToken, user);
       return true;
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Login failed');
+    } catch (err: unknown) {
+      if (err instanceof Error && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: { message?: string } } } };
+        setError(axiosErr.response?.data?.error?.message || 'Login failed');
+      } else {
+        setError('Login failed');
+      }
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (userData: any) => {
+  const register = async (userData: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
@@ -31,8 +36,13 @@ export const useAuth = () => {
       const { accessToken, user } = response.data;
       setAuth(accessToken, user);
       return true;
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Registration failed');
+    } catch (err: unknown) {
+      if (err instanceof Error && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: { message?: string } } } };
+        setError(axiosErr.response?.data?.error?.message || 'Registration failed');
+      } else {
+        setError('Registration failed');
+      }
       return false;
     } finally {
       setLoading(false);
