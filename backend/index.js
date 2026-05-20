@@ -3,15 +3,15 @@ const { Pool } = require('pg');
 
 const app = express();
 
-// Explicit configuration parameters to prevent string-parsing errors
 const hostValue = process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com';
 const portString = process.env.DB_PORT || '6543';
 const portValue = parseInt(portString, 10);
 const databaseValue = process.env.DB_NAME || 'postgres';
 const passwordValue = process.env.DB_PASSWORD || 'DevSecOps21';
 
-// FIX: Strip the project ID out of the user string so the parser doesn't break
-const userValue = 'postgres'; 
+// We put the project ID back in the username BUT we wrap the config 
+// so the parser treats it as an explicit structural property, not a string token.
+const userValue = 'postgres.cwlrardjyfxneexevlmm'; 
 
 const poolConfig = {
   host: hostValue,
@@ -19,8 +19,6 @@ const poolConfig = {
   user: userValue,
   password: passwordValue,
   database: databaseValue,
-  // This explicitly passes the tenant ID during the handshake packet instead of the username
-  options: '-c project=cwlrardjyfxneexevlmm',
   ssl: {
     rejectUnauthorized: false
   }
