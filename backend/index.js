@@ -3,45 +3,22 @@ const { Pool } = require('pg');
 
 const app = express();
 
-const hostValue = process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com';
-const portString = process.env.DB_PORT || '6543';
-const portValue = parseInt(portString, 10);
-const databaseValue = process.env.DB_NAME || 'postgres';
-const passwordValue = process.env.DB_PASSWORD || 'DevSecOps21';
+const pool = new Pool({
+  host: process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com',
+  port: parseInt(process.env.DB_PORT || '6543', 10),
+  user: process.env.DB_USER || 'postgres.cwlrardjyfxneexevlmm',
+  password: process.env.DB_PASSWORD || 'DevSecOps21',
+  database: process.env.DB_NAME || 'postgres',
+  ssl: { rejectUnauthorized: false }
+});
 
-// We put the project ID back in the username BUT we wrap the config 
-// so the parser treats it as an explicit structural property, not a string token.
-const userValue = 'postgres.cwlrardjyfxneexevlmm'; 
-
-const poolConfig = {
-  host: hostValue,
-  port: portValue,
-  user: userValue,
-  password: passwordValue,
-  database: databaseValue,
-  ssl: {
-    rejectUnauthorized: false
-  }
-};
-
-const pool = new Pool(poolConfig);
-
-const fallbackPort = 3000;
-const envPort = process.env.PORT;
-let finalPort;
-
-if (envPort) {
-  finalPort = envPort;
-} else {
-  finalPort = fallbackPort;
-}
+const PORT = process.env.PORT || 3000;
 
 pool.connect()
   .then(() => {
     console.log('Connected to Database');
-    app.listen(finalPort, () => {
-      console.log('Server running on port ' + finalPort);
-    });
+    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+    app.listen(PORT, () => console.log('Server running on port ' + PORT));
   })
   .catch(err => {
     console.error('Database connection error', err);
