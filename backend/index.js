@@ -1,16 +1,22 @@
-cat << 'EOF' > backend/index.js
 const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
 
-// Student-style explicit config object to completely bypass URL string parsing bugs
+// Explicit configuration parameters to prevent string-parsing errors
+const hostValue = process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com';
+const portString = process.env.DB_PORT || '6543';
+const portValue = parseInt(portString, 10);
+const userValue = process.env.DB_USER || 'postgres.cwlrardjyfxneexevlmm';
+const passwordValue = process.env.DB_PASSWORD || 'DevSecOps21';
+const databaseValue = process.env.DB_NAME || 'postgres';
+
 const poolConfig = {
-  host: process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com',
-  port: parseInt(process.env.DB_PORT || '6543', 10),
-  user: process.env.DB_USER || 'postgres.cwlrardjyfxneexevlmm',
-  password: process.env.DB_PASSWORD || 'DevSecOps21',
-  database: process.env.DB_NAME || 'postgres',
+  host: hostValue,
+  port: portValue,
+  user: userValue,
+  password: passwordValue,
+  database: databaseValue,
   ssl: {
     rejectUnauthorized: false
   }
@@ -18,8 +24,15 @@ const poolConfig = {
 
 const pool = new Pool(poolConfig);
 
-const tempPort = process.env.PORT;
-const finalPort = tempPort || 3000;
+const fallbackPort = 3000;
+const envPort = process.env.PORT;
+let finalPort;
+
+if (envPort) {
+  finalPort = envPort;
+} else {
+  finalPort = fallbackPort;
+}
 
 pool.connect()
   .then(() => {
@@ -32,4 +45,3 @@ pool.connect()
     console.error('Database connection error', err);
     process.exit(1);
   });
-EOF
