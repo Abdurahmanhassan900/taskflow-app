@@ -11,4 +11,3 @@ model Task {
   title     String
   completed Boolean  @default(false)
 }
-EOF
