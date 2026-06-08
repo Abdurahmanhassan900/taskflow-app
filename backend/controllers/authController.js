@@ -1,13 +1,14 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 
-// Initialize Prisma
+// Instantiate the database client
 const prisma = new PrismaClient();
 
 const DEFAULT_ACCESS_SECRET = 'temporary_development_access_secret_string_32_chars';
 
-exports.registerUser = async (req, res, next) => {
+export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const inboundEmail = req.body.email;
     const inboundPassword = req.body.password;
@@ -35,17 +36,17 @@ exports.registerUser = async (req, res, next) => {
       }
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       id: newlyCreatedUserRecord.id,
       email: newlyCreatedUserRecord.email,
       role: newlyCreatedUserRecord.role
     });
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-exports.loginUser = async (req, res, next) => {
+export const loginUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const inboundEmail = req.body.email;
     const inboundPassword = req.body.password;
@@ -76,7 +77,7 @@ exports.loginUser = async (req, res, next) => {
       { expiresIn: '15m' }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       accessToken: shortTermAccessToken,
       user: {
         id: targetUserRecord.id,
@@ -85,6 +86,6 @@ exports.loginUser = async (req, res, next) => {
       }
     });
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
