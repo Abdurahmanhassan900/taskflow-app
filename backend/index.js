@@ -1,66 +1,73 @@
 const express = require('express');
-const { Pool } = require('pg');
-const { PrismaClient } = require('@prisma/client'); // New
-const { PrismaPg } = require('@prisma/adapter-pg'); // New
-const helmet = require('helmet');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// ==========================================
-// 1. SECURITY LAYER CONFIGURATION
-// ==========================================
-app.use(helmet());
+app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 
-const allowedFrontendURL = process.env.ALLOWED_ORIGIN || 'https://taskflow-app-blush.vercel.app';
-app.use(cors({ origin: allowedFrontendURL, credentials: true }));
+let nextId = 4;
+const tasks = [
+  { id: 1, title: 'Set up local dev environment', completed: true },
+  { id: 2, title: 'Review project requirements', completed: false },
+  { id: 3, title: 'Build MVP task list', completed: false },
+];
 
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5 });
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 
-app.use(globalLimiter); 
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+app.get('/api/tasks', (_req, res) => {
+  res.json(tasks);
+});
 
-// ==========================================
-// 2. DATABASE & INFRASTRUCTURE
-// ==========================================
+app.post('/api/tasks', (req, res) => {
+  const title = req.body?.title?.trim();
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
 
-const poolConfig = {
-  host: process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com',
-  port: parseInt(process.env.DB_PORT || '6543', 10),
-  user: 'postgres.cwlrardjyfxneexevlmm',
-  password: process.env.DB_PASSWORD || 'DevSecOps21',
-  database: process.env.DB_NAME || 'postgres',
-  ssl: { rejectUnauthorized: false }
-};
+  const task = { id: nextId++, title, completed: false };
+  tasks.push(task);
+  res.status(201).json(task);
+});
 
-const pool = new Pool(poolConfig);
-const adapter = new PrismaPg(pool); // Create the adapter
-const prisma = new PrismaClient({ adapter }); // Pass adapter here
+app.patch('/api/tasks/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.find((item) => item.id === id);
 
-// ==========================================
-// 3. SERVER STARTUP
-// ==========================================
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
 
-pool.connect()
-  .then(() => {
-    console.log('Connected to Database and Prisma initialized');
-    
-    app.get('/health', (req, res) => res.json({ status: 'ok' }));
-    
-    // Example Prisma usage
-    app.get('/api/tasks', async (req, res) => {
-        const tasks = await prisma.task.findMany();
-        res.json(tasks);
-    });
-    
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log('Server running on port ' + PORT));
-  })
-  .catch(err => {
-    console.error('Database connection error', err);
-    process.exit(1);
-  });
+  if (typeof req.body.completed === 'boolean') {
+    task.completed = req.body.completed;
+  }
+
+  if (req.body.title !== undefined) {
+    const title = String(req.body.title).trim();
+    if (!title) {
+      return res.status(400).json({ error: 'Title cannot be empty' });
+    }
+    task.title = title;
+  }
+
+  res.json(task);
+});
+
+app.delete('/api/tasks/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const index = tasks.findIndex((item) => item.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  tasks.splice(index, 1);
+  res.status(204).send();
+});
+
+app.listen(PORT, () => {
+  console.log(`TaskFlow MVP API running at http://localhost:${PORT}`);
+});
