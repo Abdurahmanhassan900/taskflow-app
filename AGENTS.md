@@ -5,42 +5,45 @@
 TaskFlow is a monorepo with two apps plus a database:
 
 - `frontend/` — React 19 + Vite 8 SPA (dev server on port **5173**).
-- `backend/` — Express 5 REST API (port **3000**), talks to PostgreSQL via Prisma + `@prisma/adapter-pg`.
-- PostgreSQL — stores tasks. Installed locally (PostgreSQL 16) in this environment.
+- `backend/` — Express 5 REST API (port **3000**), serving routes under **`/api/v1`**, backed by PostgreSQL via Prisma 6.
+- PostgreSQL — stores `User` and `Task` records. Installed locally (PostgreSQL 16) in this environment.
 
-Node 22 is installed; the dependency refresh (`npm ci` in both apps + `prisma generate` in `backend/`) runs automatically on startup via the update script.
+Node 22 is installed. The dependency refresh (`npm ci` in both apps + `prisma generate` in `backend/`) runs automatically on startup via the update script.
 
-### Standard commands (already documented in `package.json`)
-- Frontend: `npm run dev`, `npm run lint`, `npm run build` (build needs `VITE_API_URL`), in `frontend/`.
-- Backend: `npm start` (`node index.js`) in `backend/`. There is no real test suite (`npm test` is a placeholder; CI in `.github/workflows/ci.yml` only lints/audits/builds).
+### Architecture / contract (so the layers stay in sync)
+- Backend serves everything under `/api/v1` (e.g. `/api/v1/auth/login`, `/api/v1/tasks`).
+- Frontend must set `VITE_API_URL=http://localhost:3000/api/v1` (in `frontend/.env`).
+- Auth = JWT access token in the `Authorization` header + a refresh token in an httpOnly cookie (so `withCredentials`/CORS `credentials:true` matter). The full contract lives in `docs/api-contract.md` — keep it in sync when you change endpoints.
 
-### Starting Postgres (not auto-started on boot)
-PostgreSQL is installed but its cluster is not started automatically. Start it with:
+### Standard commands (already in `package.json`)
+- Frontend (`frontend/`): `npm run dev`, `npm run lint`, `npm run build` (build needs `VITE_API_URL`).
+- Backend (`backend/`): `npm start` (= `node index.js`). No automated test suite yet (`npm test` is a placeholder).
+
+### Database setup (one-time) + migrations
+PostgreSQL is installed but **not auto-started on boot**. Start it, then ensure the dev DB/role exist and migrations are applied:
 
 ```
 sudo pg_ctlcluster 16 main start
+# create the dev role + db if missing (password-based, used by DATABASE_URL):
+sudo -u postgres psql -c "CREATE ROLE taskflow LOGIN CREATEDB PASSWORD 'taskflow';" 2>/dev/null || true
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='taskflow'" | grep -q 1 || sudo -u postgres createdb -O taskflow taskflow
+cd backend && npx prisma migrate deploy   # applies committed migrations
 ```
 
-SSL is enabled by default (snakeoil cert), which the backend requires (see below). A local login role and seeded `Task` table already exist in the `postgres` database:
-- role: `postgres.cwlrardjyfxneexevlmm`, password: `DevSecOps21` (superuser)
-- table: `"Task"(id serial pk, title text, completed boolean)`
+The dev role/db and any data persist in the VM snapshot; usually you just need `pg_ctlcluster ... start`. Run `npx prisma migrate deploy` after pulling new migrations.
 
-### Running the backend (important gotchas)
-`backend/index.js` does **not** use `dotenv`, so a `.env` file is ignored — pass env vars on the command line. It also **hardcodes** the DB user (`postgres.cwlrardjyfxneexevlmm`) and **always connects with SSL**; it ignores `DATABASE_URL` and instead reads `DB_HOST`/`DB_PORT`/`DB_PASSWORD`/`DB_NAME`. To run against local Postgres:
+### Running the backend
+`backend/index.js` loads `backend/.env` via `dotenv`. Required vars: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `ALLOWED_ORIGIN`, `PORT` (see `backend/.env.example`). Local `DATABASE_URL` is `postgresql://taskflow:taskflow@localhost:5432/taskflow`. Then:
 
 ```
-cd backend
-DB_HOST=localhost DB_PORT=5432 DB_PASSWORD=DevSecOps21 DB_NAME=postgres \
-  ALLOWED_ORIGIN=http://localhost:5173 JWT_SECRET=dev_secret PORT=3000 node index.js
+cd backend && npm start
 ```
 
-Verify: `curl http://localhost:3000/health` → `{"status":"ok"}`, `curl http://localhost:3000/api/tasks` → JSON array of tasks. `npm ci` does NOT regenerate the Prisma client, so run `npx prisma generate` in `backend/` after a fresh install (the update script does this).
+Verify: `curl http://localhost:3000/health` → `{"status":"ok"}`. Note `npm ci` does NOT regenerate the Prisma client, so run `npx prisma generate` after a fresh install (the update script does this).
 
 ### Running the frontend
-Create `frontend/.env` with `VITE_API_URL=http://localhost:3000/api`, then `npm run dev`. The `/api` suffix matters: the frontend calls paths like `/tasks`, while the backend serves them under `/api`.
+Create `frontend/.env` with `VITE_API_URL=http://localhost:3000/api/v1`, then `npm run dev`. The auth token is held in memory (Zustand, not localStorage), so a full page reload logs you out; navigate within the SPA after logging in.
 
-### Known pre-existing app bugs (NOT environment issues — out of scope for setup)
-These are code-level issues in the repo that block a full authenticated UI flow; do not "fix" them as part of environment setup:
-- The backend only implements `GET /health` and `GET /api/tasks`. The auth routes the frontend calls (`/auth/login`, `/auth/register`, `/auth/refresh`) are not wired up. `backend/controllers/authController.js` is TypeScript written in a `.js` CommonJS file and is never imported.
-- `backend/package.json` historically omitted runtime deps that `index.js` requires (`@prisma/client`, `@prisma/adapter-pg`, `helmet`, `cors`, `express-rate-limit`); these are now declared so the API can start.
-- `frontend/src/store/authStore.ts` does not persist the token, so protected routes (`/dashboard`, `/tasks`) cannot be reached without a working login. As a result the UI can be exercised up to the login/register screens; the tasks data flow is best demonstrated directly against the backend API.
+### DevOps notes (owner: this is the area under active development)
+- `backend/Dockerfile` / `docker-compose.yml` predate the current backend. The app now reads `DATABASE_URL` (so compose's DB wiring will work) and needs `npx prisma generate` (and `prisma migrate deploy`) as part of the image/startup — update these when working on containerization.
+- CI (`.github/workflows/ci.yml`) currently runs audit + frontend build; lint/test steps are stubbed out.
