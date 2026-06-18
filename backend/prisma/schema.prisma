@@ -4,10 +4,28 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      String   @default("MEMBER") // MEMBER | ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tasks     Task[]
 }
 
 model Task {
-  id        Int      @id @default(autoincrement())
-  title     String
-  completed Boolean  @default(false)
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  status      String   @default("To Do") // To Do | In Progress | Completed
+  priority    String   @default("Medium") // Low | Medium | High
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
