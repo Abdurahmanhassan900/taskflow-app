@@ -1,22 +1,30 @@
-import { type ReactElement, useState, type FormEvent } from 'react';
+import { type ReactElement } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
+import { registerSchema, type RegisterFormValues } from '../schemas/authSchemas';
 
 export const Register = (): ReactElement => {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const { register, loading, error } = useAuth();
+  const { register: registerUser, loading, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  // register() (from react-hook-form) is renamed to registerField here so it
+  // doesn't clash with our own registerUser() auth function below.
+  const {
+    register: registerField,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    mode: 'onTouched',
+  });
 
-    const success = await register({ fullName, email, password });
-
+  const onSubmit = async (values: RegisterFormValues) => {
+    const success = await registerUser(values);
     if (success) {
       navigate('/dashboard');
     }
@@ -37,7 +45,7 @@ export const Register = (): ReactElement => {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)} noValidate>
           {error && (
             <div className="p-3 bg-red-50 text-red-500 rounded text-sm">
               {error}
@@ -47,26 +55,23 @@ export const Register = (): ReactElement => {
             <Input
               label="Full Name"
               type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
               placeholder="Jane Doe"
+              error={errors.fullName?.message}
+              {...registerField('fullName')}
             />
             <Input
               label="Email address"
               type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              error={errors.email?.message}
+              {...registerField('email')}
             />
             <Input
               label="Password"
               type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              error={errors.password?.message}
+              {...registerField('password')}
             />
           </div>
 

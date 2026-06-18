@@ -1,21 +1,32 @@
-import { type ReactElement, useState, type FormEvent } from 'react';
+import { type ReactElement } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
+import { loginSchema, type LoginFormValues } from '../schemas/authSchemas';
 
 export const Login = (): ReactElement => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const { login, loading, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  // useForm is the brain of the form: it tracks every field's value, runs the
+  // zod schema (via zodResolver) when we validate, and collects any errors.
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onTouched', // validate a field once the user has visited and left it
+  });
 
-    const success = await login({ email, password });
-
+  // handleSubmit only calls this AFTER the data passes the schema. So by the
+  // time we reach the network call, we already know the input is valid.
+  const onSubmit = async (values: LoginFormValues) => {
+    const success = await login(values);
     if (success) {
       navigate('/dashboard');
     }
@@ -36,7 +47,9 @@ export const Login = (): ReactElement => {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        {/* noValidate turns off the browser's built-in popups so zod is the
+            single source of truth for validation messages. */}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)} noValidate>
           {error && (
             <div className="p-3 bg-red-50 text-red-500 rounded text-sm">
               {error}
@@ -46,18 +59,16 @@ export const Login = (): ReactElement => {
             <Input
               label="Email address"
               type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              error={errors.email?.message}
+              {...register('email')}
             />
             <Input
               label="Password"
               type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              error={errors.password?.message}
+              {...register('password')}
             />
           </div>
 
