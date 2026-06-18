@@ -1,7 +1,7 @@
 import { type ReactElement, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import toast from 'react-hot-toast';
+import { toast } from '../lib/toast';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from './components/Toaster';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -12,7 +12,7 @@ import { NotFound } from './pages/NotFound';
 function App() {
   return (
     <Router>
-      <Toaster position="top-right" />
+      <Toaster />
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />

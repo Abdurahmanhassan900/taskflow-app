@@ -1,5 +1,5 @@
 import { type ReactElement, useState, useEffect, type FormEvent } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from '../lib/toast';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
