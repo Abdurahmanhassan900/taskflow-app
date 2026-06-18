@@ -15,7 +15,21 @@ export const registerSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmNewPassword: z.string().min(1, 'Please confirm your new password'),
+  })
+  // refine runs a custom rule across multiple fields; here the two new-password
+  // entries must match, and the error is attached to the confirm field.
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmNewPassword'],
+  });
+
 // z.infer reads the schema above and produces the matching TS type, so the form
 // values and the validation rules can never drift apart.
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
