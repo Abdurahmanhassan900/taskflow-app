@@ -1,66 +1,80 @@
 require('dotenv/config');
 
 const express = require('express');
-const { Pool } = require('pg');
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
 const helmet = require('helmet');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
+const { pool } = require('./lib/prisma');
+const authRoutes = require('./routes/authRoutes');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+
 const app = express();
+const API_PREFIX = '/api/v1';
 
 // ==========================================
 // 1. SECURITY LAYER CONFIGURATION
 // ==========================================
 app.use(helmet());
-app.use(express.json());
 
-const allowedFrontendURL = process.env.ALLOWED_ORIGIN || 'https://taskflow-app-blush.vercel.app';
+const allowedFrontendURL = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
 app.use(cors({ origin: allowedFrontendURL, credentials: true }));
 
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5 });
+app.use(express.json());
+app.use(cookieParser());
 
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 app.use(globalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
 
 // ==========================================
-// 2. DATABASE & INFRASTRUCTURE
+// 2. ROUTES
 // ==========================================
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is required');
-  process.exit(1);
-}
+app.use(`${API_PREFIX}/auth`, authRoutes);
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+// Temporary public task listing until auth middleware is added in the next task.
+app.get(`${API_PREFIX}/tasks`, async (req, res, next) => {
+  try {
+    const { prisma } = require('./lib/prisma');
+    const tasks = await prisma.task.findMany({
+      where: { deletedAt: null },
+    });
+    res.json(tasks);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use(notFound);
+app.use(errorHandler);
 
 // ==========================================
 // 3. SERVER STARTUP
 // ==========================================
-
-pool.connect()
-  .then(() => {
+const startServer = async () => {
+  try {
+    await pool.connect();
     console.log('Connected to Database and Prisma initialized');
 
-    app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-    // Example Prisma usage
-    app.get('/api/tasks', async (req, res) => {
-      const tasks = await prisma.task.findMany({
-        where: { deletedAt: null },
-      });
-      res.json(tasks);
-    });
-
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log('Server running on port ' + PORT));
-  })
-  .catch(err => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} (API at ${API_PREFIX})`);
+    });
+  } catch (err) {
     console.error('Database connection error', err);
     process.exit(1);
-  });
+  }
+};
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;

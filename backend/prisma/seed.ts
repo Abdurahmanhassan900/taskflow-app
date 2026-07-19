@@ -1,17 +1,12 @@
 import "dotenv/config";
-import { randomBytes, scryptSync } from "node:crypto";
+import bcrypt from "bcryptjs";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
 const SEED_EMAIL = "test@taskflow.local";
 const SEED_TASK_TITLE = "Learn Prisma";
-
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
-}
+const BCRYPT_ROUNDS = 12;
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) {
@@ -23,11 +18,11 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient({ adapter });
 
   try {
-    const passwordHash = hashPassword("local-dev-only-change-me");
+    const passwordHash = await bcrypt.hash("local-dev-only-change-me", BCRYPT_ROUNDS);
 
     const user = await prisma.user.upsert({
       where: { email: SEED_EMAIL },
-      update: {},
+      update: { passwordHash },
       create: {
         email: SEED_EMAIL,
         fullName: "Test User",

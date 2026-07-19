@@ -22,12 +22,39 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
+      - name: Generate Prisma client
+        run: cd backend && npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
+      - name: Run database migrations
+        run: cd backend && npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
+      - name: Run backend tests
+        run: cd backend && npm test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+          JWT_SECRET: ci_test_access_secret_at_least_32_chars
+          JWT_REFRESH_SECRET: ci_test_refresh_secret_at_least_32_chars
+
       - name: Security audit (backend)
         run: cd backend && npm audit --audit-level=high
-
-      # When Abdul adds tests, uncomment this:
-      # - name: Run backend tests
-      #   run: cd backend && npm test
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: taskflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d taskflow_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
   frontend:
     name: Frontend — Lint, Test, Build
