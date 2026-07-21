@@ -1,205 +1,173 @@
-# Deployment Guide
+# TaskFlow
 
-This document covers how to deploy the TaskFlow application from scratch across all three cloud platforms: Supabase (database), Render (backend), and Vercel (frontend).
+TaskFlow is a full-stack task management application with authentication, role-based access control, and secure API design. It is built for learning backend, DevOps, and DevSecOps practices.
 
----
+## Architecture
 
-## Architecture Overview
-
-```
-[ Browser ]
-    │
-    ▼
-[ Vercel ] — React frontend (static)
-    │
-    │ HTTPS API requests
-    ▼
-[ Render ] — Node.js/Express backend (Docker)
-    │
-    │ TCP over port 6543 (IPv4 pooler)
-    ▼
-[ Supabase ] — PostgreSQL database
+```text
+Browser (React + Vite)
+        │
+        ▼
+Express API (Node.js)
+        │
+        ▼
+PostgreSQL (Supabase in production, Docker locally)
 ```
 
----
+## Tech stack
 
-## Prerequisites
-
-Before starting, create free accounts at:
-
-- [github.com](https://github.com)
-- [supabase.com](https://supabase.com)
-- [render.com](https://render.com)
-- [vercel.com](https://vercel.com)
-
----
-
-## Step 1 — Database (Supabase)
-
-1. Sign in to Supabase via GitHub.
-2. Click **New Project**. Give it a name and a strong password. Save the password.
-3. Select **US East** (or the region closest to your team). Wait for provisioning (~2 min).
-4. Go to **Project Settings → Database → Connection string → URI mode**.
-5. Copy the connection string. It looks like:
-   ```
-   postgresql://postgres:[YOUR-PASSWORD]@db.xxxx.supabase.co:5432/postgres
-   ```
-6. For Render deployment, you also need the **Transaction Pooler** string. Go to **Project Settings → Database → Connection pooling** and copy the **Transaction** mode string on port **6543**. It looks like:
-   ```
-   postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-1-us-west-2.pooler.supabase.com:6543/postgres
-   ```
-
-Keep both strings safe. You'll need them in the next steps.
-
----
-
-## Step 2 — Backend (Render)
-
-### Create the Web Service
-
-1. Sign in to Render via GitHub.
-2. Click **New + → Web Service**.
-3. Connect your GitHub repository (`taskflow-app`).
-4. Configure the service:
-   - **Runtime:** Docker
-   - **Root Directory:** `backend`
-   - **Dockerfile Path:** `Dockerfile`
-   - **Docker Build Context:** `.`
-
-### Environment Variables
-
-Go to **Environment** and add the following variables:
-
-| Key | Value |
+| Layer | Technology |
 |---|---|
-| `DB_HOST` | `aws-1-us-west-2.pooler.supabase.com` |
-| `DB_PORT` | `6543` |
-| `DB_USER` | `postgres.xxxx` (your Supabase project ID) |
-| `DB_PASSWORD` | Your Supabase database password |
-| `DB_NAME` | `postgres` |
-| `PORT` | `3000` |
-| `JWT_SECRET` | A random 32-character string |
-| `JWT_REFRESH_SECRET` | A different random 32-character string |
-| `ALLOWED_ORIGIN` | Leave blank for now — add your Vercel URL after Step 3 |
-| `NODE_ENV` | `production` |
+| Frontend | React, TypeScript, Vite, Tailwind, Zustand, Axios |
+| Backend | Node.js, Express, Prisma 7, PostgreSQL |
+| Auth | JWT access tokens + httpOnly refresh cookies |
+| Validation | Zod |
+| Testing | Node test runner, Supertest, Playwright |
+| CI/CD | GitHub Actions |
+| Hosting | Vercel (frontend), Render (backend), Supabase (database) |
 
-> To generate a secure random secret: run `openssl rand -base64 32` in your terminal, or use [randomkeygen.com](https://randomkeygen.com).
+## Quick start (local)
 
-### Deploy
+### Prerequisites
 
-Click **Create Web Service**. Wait for the build to complete. Copy your Render URL — it looks like `https://taskflow-app-1-tn86.onrender.com`. You'll need this in the next step.
+- Node.js 20+
+- Docker (optional, for PostgreSQL)
+- npm
 
-### Verify
+### 1. Start the database
 
-Visit `https://your-render-url.onrender.com/health`. You should see:
-```json
-{"status": "ok"}
+```bash
+docker compose up db -d
 ```
 
----
+### 2. Backend
 
-## Step 3 — Frontend (Vercel)
+```bash
+cd backend
+cp .env.example .env
+npm install
+npx prisma migrate deploy
+npx prisma db seed
+npm start
+```
 
-### Create the Project
+API available at `http://localhost:3000/api/v1`
 
-1. Sign in to Vercel via GitHub.
-2. Click **Add New → Project**.
-3. Import your `taskflow-app` repository.
-4. Set the **Root Directory** to `frontend`.
-5. Set the **Framework Preset** to `Vite`.
+### 3. Frontend
 
-### Environment Variables
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
 
-Add the following under **Environment Variables**:
+App available at `http://localhost:5173`
 
-| Key | Value |
-|---|---|
-| `VITE_API_URL` | Your Render backend URL (e.g., `https://taskflow-app-1-tn86.onrender.com`) |
+### Seed accounts (development only)
 
-### Deploy
+| Email | Password | Role |
+|---|---|---|
+| `test@taskflow.local` | `local-dev-only-change-me` | MEMBER |
+| `admin@taskflow.local` | `local-dev-only-change-me` | ADMIN |
 
-Click **Deploy**. Once finished, copy your Vercel URL — it looks like `https://taskflow-app-blush.vercel.app`.
+## Environment variables
 
----
+### Backend (`backend/.env`)
 
-## Step 4 — Wire Frontend → Backend (CORS)
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes (prod) | Access token signing secret |
+| `JWT_REFRESH_SECRET` | Yes (prod) | Refresh token signing secret |
+| `ALLOWED_ORIGIN` | Yes | Frontend URL for CORS |
+| `PORT` | No | Default `3000` |
+| `NODE_ENV` | No | `development` or `production` |
 
-Now that you have your Vercel URL, go back to Render:
+### Frontend (`frontend/.env`)
 
-1. Open your backend web service → **Environment**.
-2. Edit `ALLOWED_ORIGIN` and set it to your Vercel URL (e.g., `https://taskflow-app-blush.vercel.app`).
-3. Click **Save Changes** — this triggers a redeploy automatically.
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | Yes | Backend API base URL, e.g. `http://localhost:3000/api/v1` |
 
-This tells your backend to accept requests from your frontend and prevents CORS errors.
+## API overview
 
----
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/health` | No | Health check |
+| POST | `/api/v1/auth/register` | No | Create account |
+| POST | `/api/v1/auth/login` | No | Login |
+| POST | `/api/v1/auth/refresh` | Cookie | Refresh access token |
+| POST | `/api/v1/auth/logout` | Cookie | Logout |
+| PUT | `/api/v1/auth/password` | Yes | Change password |
+| GET | `/api/v1/tasks` | Yes | List own tasks |
+| POST | `/api/v1/tasks` | Yes | Create task |
+| GET | `/api/v1/tasks/:id` | Yes | Get own task |
+| PUT | `/api/v1/tasks/:id` | Yes | Update own task |
+| DELETE | `/api/v1/tasks/:id` | Yes | Soft-delete own task |
+| GET | `/api/v1/admin/users` | Admin | List users |
+| PUT | `/api/v1/admin/users/:id/role` | Admin | Change user role |
+| DELETE | `/api/v1/admin/users/:id` | Admin | Soft-delete user |
 
-## Step 5 — GitHub Actions (CI/CD)
+Full contract: `docs/api-contract.md`
 
-### CI Pipeline (auto-runs on Pull Requests)
+## Security features
 
-The file `.github/workflows/ci.yml` is already configured. It runs automatically on every PR to `main` and:
+- bcrypt password hashing (12 rounds)
+- JWT access tokens (15 min) + refresh tokens in httpOnly cookies (7 days)
+- Server-side auth on every protected route
+- RBAC for admin endpoints
+- IDOR prevention: tasks scoped to `req.user.id`
+- Soft delete for users and tasks
+- Zod input validation
+- Rate limiting on auth routes
+- Helmet security headers
+- CORS restricted to `ALLOWED_ORIGIN`
+- Request ID header (`X-Request-Id`) on every response
+- Structured JSON logging (no secrets in logs)
+- Safe error responses (no stack traces to clients)
 
-- Installs dependencies
-- Runs `npm audit --audit-level=high` on both backend and frontend
-- Runs linter and tests
+## Testing
 
-No setup needed — it works as soon as code is pushed.
+```bash
+# Backend integration tests (requires PostgreSQL)
+cd backend && npm test
 
-### Deploy Pipeline (auto-runs on merge to `main`)
+# Frontend build
+cd frontend && npm run build
 
-1. Go to your Render dashboard → your backend service → **Settings → Deploy Hook**.
-2. Copy the deploy hook URL.
-3. In your GitHub repository, go to **Settings → Secrets and variables → Actions**.
-4. Create a new secret named `RENDER_DEPLOY_HOOK_URL` and paste the URL.
+# E2E (requires backend + frontend running)
+npm run test:e2e
+```
 
-The file `.github/workflows/deploy.yml` is already configured to use this secret. Every merge to `main` will now trigger an automatic Render deployment.
+## Docker (full stack)
 
----
+```bash
+docker compose up --build
+```
 
-## Pre-Demo Checklist
+## Phase 1 completion checkpoint
 
-Render's free tier puts the backend to sleep after 15 minutes of inactivity. A cold start takes 30–60 seconds. Run through this checklist before every demo or recording:
+When Phase 1 is complete, tag the repository:
 
-- [ ] **5 minutes before:** visit `https://your-render-url.onrender.com/health` in a browser
-- [ ] Wait until it returns `{"status": "ok"}`
-- [ ] The backend is now awake and responsive
-- [ ] Open the Vercel frontend URL and confirm the UI loads
-- [ ] Try logging in with a test account to confirm the full stack is working end-to-end
+```bash
+git tag -a v1-platform-hosted -m "Phase 1: complete TaskFlow on Vercel/Render/Supabase"
+```
 
-> **Optional:** Create a free [UptimeRobot](https://uptimerobot.com) monitor that pings your `/health` endpoint every 5 minutes to keep the backend awake permanently.
+## Known limitations
 
----
+- Refresh tokens are stateless JWTs (cannot be revoked server-side without a token store)
+- No email verification or password reset flow
+- Dashboard charts are summary cards only (no graph library)
+- Admin UI page not built in frontend (admin API available via API tools)
+- Render free tier cold starts (~30–60s)
 
-## Troubleshooting
+## Documentation
 
-### Backend won't connect to database
+- [Deployment guide](docs/DEPLOYMENT.md)
+- [API contract](docs/api-contract.md)
+- [Changelog](CHANGELOG.md)
 
-Check your `DB_HOST` value on Render. It must point to `aws-1-us-west-2.pooler.supabase.com` (note: `aws-1`, not `aws-0` — your Supabase project is in the `us-west-2` region under index 1). Confirm in your Supabase dashboard under **Project Settings → Database → Connection pooling**.
+## License
 
-### CORS errors in the browser
-
-Verify that `ALLOWED_ORIGIN` on Render exactly matches your Vercel URL with no trailing slash.
-
-### Frontend shows blank page or fails to fetch
-
-Check that `VITE_API_URL` is set correctly in your Vercel project environment variables, and that it points to your Render URL with no trailing slash.
-
-### Render deploy fails immediately
-
-Check the **Logs** tab (not the build logs — the runtime logs). The actual error message appears there. Common causes: wrong `DB_HOST`, missing environment variable, or a code error in `index.js`.
-
-### "Cannot GET /" on the backend URL
-
-This is expected and normal. Your backend is an API server, not a website. Visit `/health` to confirm it's running. Your actual UI lives on Vercel.
-
----
-
-## Live URLs
-
-| Service | URL |
-|---|---|
-| Frontend (Vercel) | https://taskflow-app-blush.vercel.app |
-| Backend API (Render) | https://taskflow-app-1-tn86.onrender.com |
-| Health Check | https://taskflow-app-1-tn86.onrender.com/health |
-| GitHub Repository | https://github.com/Abdurahmanhassan900/taskflow-app |
+ISC

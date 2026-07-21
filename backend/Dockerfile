@@ -1,18 +1,23 @@
-# Use Node 18 slim Alpine image
-FROM node:18-alpine
+FROM node:20-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and install dependencies
-COPY package*.json ./
-RUN npm ci --omit=dev
+RUN apk add --no-cache openssl
 
-# Copy all source files
+COPY package*.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+RUN npm ci
+
+RUN npx prisma generate
+
 COPY . .
 
-# Expose backend port
 EXPOSE 3000
 
-# Start the backend
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "index.js"]

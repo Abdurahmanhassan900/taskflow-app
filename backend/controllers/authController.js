@@ -33,10 +33,6 @@ const publicUser = (user) => ({
 const register = asyncHandler(async (req, res) => {
   const { fullName, email, password } = req.body;
 
-  if (!fullName || !email || !password) {
-    throw new ApiError(400, 'Full name, email, and password are required');
-  }
-
   const existing = await prisma.user.findFirst({
     where: { email, deletedAt: null },
   });
@@ -64,10 +60,6 @@ const register = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    throw new ApiError(400, 'Email and password are required');
-  }
 
   const user = await prisma.user.findFirst({
     where: { email, deletedAt: null },

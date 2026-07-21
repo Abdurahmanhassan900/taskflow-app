@@ -5,8 +5,25 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
 const SEED_EMAIL = "test@taskflow.local";
+const ADMIN_EMAIL = "admin@taskflow.local";
 const SEED_TASK_TITLE = "Learn Prisma";
 const BCRYPT_ROUNDS = 12;
+
+async function upsertUser(
+  prisma: PrismaClient,
+  email: string,
+  fullName: string,
+  password: string,
+  role: "ADMIN" | "MEMBER"
+) {
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  return prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, fullName, role, deletedAt: null },
+    create: { email, fullName, passwordHash, role },
+  });
+}
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) {
@@ -18,22 +35,25 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient({ adapter });
 
   try {
-    const passwordHash = await bcrypt.hash("local-dev-only-change-me", BCRYPT_ROUNDS);
+    const member = await upsertUser(
+      prisma,
+      SEED_EMAIL,
+      "Test User",
+      "local-dev-only-change-me",
+      "MEMBER"
+    );
 
-    const user = await prisma.user.upsert({
-      where: { email: SEED_EMAIL },
-      update: { passwordHash },
-      create: {
-        email: SEED_EMAIL,
-        fullName: "Test User",
-        passwordHash,
-        role: "MEMBER",
-      },
-    });
+    await upsertUser(
+      prisma,
+      ADMIN_EMAIL,
+      "Admin User",
+      "local-dev-only-change-me",
+      "ADMIN"
+    );
 
     const existingTask = await prisma.task.findFirst({
       where: {
-        userId: user.id,
+        userId: member.id,
         title: SEED_TASK_TITLE,
         deletedAt: null,
       },
@@ -44,7 +64,7 @@ async function main(): Promise<void> {
         data: {
           title: SEED_TASK_TITLE,
           description: "Complete the Prisma schema and run the first migration.",
-          userId: user.id,
+          userId: member.id,
         },
       });
     }

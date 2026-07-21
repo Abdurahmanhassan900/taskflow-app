@@ -1,4 +1,5 @@
 const { ApiError } = require('../utils/ApiError');
+const { logger } = require('../utils/logger');
 
 const notFound = (req, res, next) => {
   next(new ApiError(404, `Route not found: ${req.method} ${req.originalUrl}`));
@@ -9,7 +10,19 @@ const errorHandler = (err, req, res, next) => {
   const isServerError = statusCode >= 500;
 
   if (isServerError) {
-    console.error(err);
+    logger.error(err.message, {
+      requestId: req.requestId,
+      stack: err.stack,
+      path: req.originalUrl,
+      method: req.method,
+    });
+  } else {
+    logger.warn(err.message, {
+      requestId: req.requestId,
+      path: req.originalUrl,
+      method: req.method,
+      statusCode,
+    });
   }
 
   res.status(statusCode).json({
