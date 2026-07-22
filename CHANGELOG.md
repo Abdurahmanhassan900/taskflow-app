@@ -1,60 +1,30 @@
 # Changelog
 
-All notable changes to TaskFlow are documented in this file.
-
-## [1.0.0] - Unreleased — Phase 1 (in verification)
-
-Phase 1 is implemented on branch `cursor/phase1-complete-e9fa` and is undergoing CI, security, deployment, and end-to-end verification. **Do not merge or tag until CI is green and manual checks pass.**
+## Unreleased
 
 ### Added
+- Backend ESLint (`eslint.config.js`) — lint runs with `prisma validate` in CI
+- Security integration tests (`backend/tests/security.test.js`) — invalid JWT, missing refresh cookie, Zod validation, admin RBAC, no stack leak on 500
+- Playwright user journey (`e2e/user-journey.spec.ts`) — register, create task, delete, logout
+- CI E2E job with PostgreSQL service and Playwright Chromium
+- Deploy workflow health polling via optional `RENDER_HEALTH_URL`
+- Comprehensive README (problem, architecture, AWS Phase 2, security, deployment, CI/CD, testing, limitations)
+- `.github/CODEOWNERS` — @Abdurahmanhassan900
 
-- Prisma 7 schema with User and Task models, enums, UUIDs, soft-delete, and migrations
-- JWT authentication (register, login, refresh, logout)
-- Password change endpoint (`PUT /api/v1/auth/password`)
-- Protected task CRUD with ownership checks (IDOR prevention)
-- Admin endpoints: list users, change roles, soft-delete users
-- RBAC middleware for admin routes
-- Zod input validation on auth and task routes
-- Centralized error handling with safe client responses
-- Request ID middleware (`X-Request-Id` header)
-- Structured JSON logging
-- Rate limiting (global + auth routes)
-- Backend integration tests (auth, tasks, IDOR, soft-delete, RBAC)
-- Docker entrypoint with automatic migrations
-- Frontend task create/delete and live dashboard stats
-- Playwright E2E scaffold (page render + auth redirect; not full deployed-stack flow)
-- Frontend Vitest component tests
-- CI runs backend lint (`prisma validate`), frontend lint (ESLint), and frontend tests
-- README, DEPLOYMENT.md, and environment variable documentation
+### Changed
+- **Node.js 20 → 22** — `.nvmrc`, Dockerfiles, CI, `engines` in package.json files
+- Package metadata — `taskflow-app` / `taskflow-backend` / `taskflow-frontend`, author, repository URLs
+- Phase 1 checklist release order — CI → secret scan → smoke test → merge → deploy → tag
+- Removed obsolete docs (`Deployment_guide`, `Revised_plan`, `frontend/README.md`, `docs/E2E.md`)
+- API contract and deployment docs aligned with implementation (no branch-name references)
 
 ### Security
+- Prisma 7.9.0 — resolves prior `npm audit` findings on backend
 
-- Removed hardcoded database credentials from application code
-- bcrypt password hashing (12 rounds)
-- httpOnly refresh token cookies (not readable via `document.cookie`)
-- Production requires `JWT_SECRET` and `JWT_REFRESH_SECRET`
-- Prisma bumped to 7.9.0 (resolves dev-tooling audit findings)
+## Phase 1 backend (prior)
 
-### Known limitations
-
-- Stateless JWT refresh flow (no refresh-token rotation; no server-side revocation list)
-- `GET /health` is liveness only — does not query PostgreSQL
-- Soft delete via `deletedAt` — not a full audit trail
-- Playwright E2E is a scaffold (page render checks only)
-- No email verification or password reset
-- Admin UI not implemented in frontend
-
-## [0.2.0] - 2026-07-18
-
-### Added
-
-- Prisma 7 migration and seed data
-- Initial JWT auth foundation
-
-## [0.1.0] - 2026-06
-
-### Added
-
-- React frontend with login, register, dashboard, and tasks UI
-- Express backend skeleton
-- Deployment documentation for Vercel/Render/Supabase
+- Prisma schema, migrations, seed
+- JWT auth (access + httpOnly refresh cookie, stateless refresh)
+- Task CRUD with ownership checks and soft delete
+- Admin RBAC endpoints
+- Integration tests, Docker Compose, GitHub Actions CI

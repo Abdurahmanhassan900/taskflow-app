@@ -82,16 +82,22 @@ On Render, set `ALLOWED_ORIGIN` to your exact Vercel URL (no trailing slash). Th
 
 ### CI (Pull Requests)
 
-`.github/workflows/ci.yml` runs on every PR:
+`.github/workflows/ci.yml` runs on every PR to `main`:
 
-- Backend: install, Prisma generate, migrate, tests, npm audit
-- Frontend: install, build, npm audit
+- Backend: ESLint, Prisma validate, migrate, integration + security tests, npm audit
+- Frontend: ESLint, Vitest, build, npm audit
+- E2E: Playwright user journey (register → task → delete → logout)
 
 ### Deploy (merge to main)
 
-`.github/workflows/deploy.yml` triggers Render via deploy hook.
+`.github/workflows/deploy.yml` runs on push to `main` (and can be triggered manually via **Actions → Deploy → Run workflow**).
 
-Set `RENDER_DEPLOY_HOOK_URL` in GitHub Actions secrets.
+| Secret | Purpose |
+|--------|---------|
+| `RENDER_DEPLOY_HOOK_URL` | Triggers Render backend redeploy (required) |
+| `RENDER_HEALTH_URL` | Optional; polls `/health` until `status: ok` (up to ~5 min) |
+
+Vercel deploys automatically when connected to the `main` branch.
 
 ## Pre-demo checklist
 

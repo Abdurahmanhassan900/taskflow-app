@@ -1,191 +1,189 @@
 # TaskFlow
 
-TaskFlow is a full-stack task management application with authentication, role-based access control, and secure API design. It is built for learning backend, DevOps, and DevSecOps practices.
+TaskFlow is a full-stack task manager for small teams: register, sign in, create and manage personal tasks, and (for admins) view aggregate statistics. Phase 1 targets **managed hosting** (Vercel + Render + Supabase). Phase 2 is a planned **AWS migration** documented here for architecture continuity — not yet implemented.
+
+## The problem
+
+Teams need a simple way to track work without heavyweight project-management tooling. TaskFlow focuses on:
+
+- **Identity** — email/password accounts with role-based access (member vs admin).
+- **Personal task lists** — each user owns their tasks; cross-user access is denied by design.
+- **Operational safety** — validation, rate limits, soft delete, and tests so the API behaves predictably in production.
 
 ## Architecture
 
-```text
-Browser (React + Vite)
-        │
-        ▼
-Express API (Node.js)
-        │
-        ▼
-PostgreSQL (Supabase in production, Docker locally)
 ```
-
-## Tech stack
+┌─────────────┐     HTTPS      ┌──────────────────┐     SQL       ┌─────────────┐
+│   Browser   │ ─────────────► │  Express API     │ ────────────► │ PostgreSQL  │
+│  React/Vite │ ◄───────────── │  (Render/Docker) │               │ (Supabase)  │
+└─────────────┘   JSON + JWT   └──────────────────┘               └─────────────┘
+       │                                  │
+       │  Bearer access token             │  Prisma ORM
+       │  httpOnly refresh cookie         │  bcrypt, Zod, Helmet
+       └──────────────────────────────────┘
+```
 
 | Layer | Technology |
-|---|---|
-| Frontend | React, TypeScript, Vite, Tailwind, Zustand, Axios |
-| Backend | Node.js, Express, Prisma 7, PostgreSQL |
-| Auth | JWT access tokens + httpOnly refresh cookies |
-| Validation | Zod |
-| Testing | Node test runner, Supertest, Playwright |
-| CI/CD | GitHub Actions |
-| Hosting | Vercel (frontend), Render (backend), Supabase (database) |
+|-------|------------|
+| Frontend | React 19, TypeScript, Vite, Tailwind, React Router |
+| Backend | Node.js 22, Express 5, Prisma 7, Zod |
+| Database | PostgreSQL 16 (Supabase in Phase 1) |
+| Auth | JWT access token (JSON) + refresh token (httpOnly cookie) |
+| Containers | Docker Compose for local full-stack |
 
-## Quick start (local)
+**Repository layout**
 
-### Prerequisites
+| Path | Purpose |
+|------|---------|
+| `frontend/` | SPA — login, register, dashboard, tasks |
+| `backend/` | REST API under `/api/v1` |
+| `backend/prisma/` | Schema, migrations, seed |
+| `e2e/` | Playwright user-journey tests |
+| `docs/` | Deployment, API contract, smoke test, secret scan |
 
-- Node.js 20+
-- Docker (optional, for PostgreSQL)
-- npm
+## AWS services (Phase 2 — planned)
 
-### 1. Start the database
+Phase 1 does **not** run on AWS. The target Phase 2 layout:
 
-```bash
-docker compose up db -d
-```
+| Service | Role |
+|---------|------|
+| **Route 53** | DNS for `api` / `app` hostnames |
+| **ACM** | TLS certificates |
+| **CloudFront** | CDN for static frontend |
+| **S3** | Frontend build artifacts |
+| **ALB** | HTTPS termination and routing to ECS |
+| **ECS Fargate** | Containerized API |
+| **RDS PostgreSQL** | Managed database |
+| **Secrets Manager** | `DATABASE_URL`, JWT secrets |
+| **CloudWatch** | Logs and alarms |
+| **ECR** | Container images |
 
-### 2. Backend
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for Phase 1 (Vercel/Render/Supabase) and Phase 2 notes.
 
-```bash
-cd backend
-cp .env.example .env
-npm install
-npx prisma migrate deploy
-npx prisma db seed
-npm start
-```
+## Security decisions
 
-API available at `http://localhost:3000/api/v1`
+| Decision | Rationale |
+|----------|-----------|
+| **bcrypt (12 rounds)** | Industry-standard password hashing |
+| **Short-lived access JWT** | Limits exposure if leaked from memory or logs |
+| **Refresh JWT in httpOnly cookie** | Not readable via `document.cookie`; sent only to the API origin |
+| **Stateless refresh (no rotation)** | Simpler Phase 1; refresh returns a new access token only; logout clears the cookie |
+| **Ownership-scoped queries** | `findFirst({ id, userId })` before update/delete — mitigates IDOR |
+| **Soft delete (`deletedAt`)** | Recoverability; not a compliance audit trail |
+| **Zod validation** | Reject bad input before controllers |
+| **Helmet + CORS allowlist** | Reduce common web headers/CORS mistakes |
+| **Rate limiting** | Brute-force mitigation on auth and global traffic |
+| **Generic 500 responses** | No stack traces to clients |
+| **`X-Request-Id`** | Correlate logs without exposing internals |
 
-### 3. Frontend
+**Limits (honest):** httpOnly cookies do not stop XSS from *using* an already-issued access token. `/health` is **liveness only** — it does not query PostgreSQL. Docker startup runs `prisma migrate deploy` but does not guarantee drift detection beyond migration failure.
 
-```bash
-cd frontend
-cp .env.example .env
-npm install
-npm run dev
-```
+Details: [docs/TECHNICAL_NOTES.md](docs/TECHNICAL_NOTES.md), [docs/api-contract.md](docs/api-contract.md).
 
-App available at `http://localhost:5173`
+## Deployment process (Phase 1)
 
-### Seed accounts (development only)
+1. **Database** — Supabase project; connection string with `?sslmode=require`.
+2. **Backend** — Render Web Service from `backend/Dockerfile`; env: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CORS_ORIGIN`, `NODE_ENV=production`.
+3. **Frontend** — Vercel; `VITE_API_URL=https://<api-host>/api/v1`.
+4. **Migrations** — `npx prisma migrate deploy` in Render build or via Docker entrypoint.
+5. **Smoke test** — [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) on production URLs before tagging.
 
-| Email | Password | Role |
-|---|---|---|
-| `test@taskflow.local` | `local-dev-only-change-me` | MEMBER |
-| `admin@taskflow.local` | `local-dev-only-change-me` | ADMIN |
+Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Environment variables
+## CI/CD process
 
-### Backend (`backend/.env`)
+**CI** (`.github/workflows/ci.yml`) on push/PR to `main`:
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `JWT_SECRET` | Yes (prod) | Access token signing secret |
-| `JWT_REFRESH_SECRET` | Yes (prod) | Refresh token signing secret |
-| `ALLOWED_ORIGIN` | Yes | Frontend URL for CORS |
-| `PORT` | No | Default `3000` |
-| `NODE_ENV` | No | `development` or `production` |
+| Job | Steps |
+|-----|--------|
+| `backend` | PostgreSQL service → `npm ci` → ESLint + `prisma validate` → `prisma migrate deploy` → integration + security tests → `npm audit --audit-level=high` |
+| `frontend` | `npm ci` → ESLint → Vitest → build → audit |
+| `e2e` | PostgreSQL → migrate + seed → Playwright user journey (register → task → delete → logout) |
 
-### Frontend (`frontend/.env`)
+**Deploy** (`.github/workflows/deploy.yml`) on push to `main` (or manual **Run workflow**):
 
-| Variable | Required | Description |
-|---|---|---|
-| `VITE_API_URL` | Yes | Backend API base URL, e.g. `http://localhost:3000/api/v1` |
+1. Optional Render deploy hook (`RENDER_DEPLOY_HOOK_URL`).
+2. Optional health poll (`RENDER_HEALTH_URL`, up to 12 × 10s).
+3. Vercel production deploy (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`).
 
-## API overview
+**Release order** — [docs/PHASE1_CHECKLIST.md](docs/PHASE1_CHECKLIST.md):
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/health` | No | Liveness check (process only; does not query the database) |
-| POST | `/api/v1/auth/register` | No | Create account |
-| POST | `/api/v1/auth/login` | No | Login |
-| POST | `/api/v1/auth/refresh` | Cookie | Verify refresh cookie; return new access token (no refresh rotation) |
-| POST | `/api/v1/auth/logout` | Cookie | Logout |
-| PUT | `/api/v1/auth/password` | Yes | Change password |
-| GET | `/api/v1/tasks` | Yes | List own tasks |
-| POST | `/api/v1/tasks` | Yes | Create task |
-| GET | `/api/v1/tasks/:id` | Yes | Get own task |
-| PUT | `/api/v1/tasks/:id` | Yes | Update own task |
-| DELETE | `/api/v1/tasks/:id` | Yes | Soft-delete own task |
-| GET | `/api/v1/admin/users` | Admin | List users |
-| PUT | `/api/v1/admin/users/:id/role` | Admin | Change user role |
-| DELETE | `/api/v1/admin/users/:id` | Admin | Soft-delete user |
-
-Full contract: `docs/api-contract.md`
-
-## Security features
-
-- bcrypt password hashing (12 rounds)
-- Stateless JWT refresh flow: short-lived access tokens + longer-lived refresh token in an httpOnly cookie (refresh endpoint returns a new access token only; no refresh rotation)
-- httpOnly refresh cookie: not readable via `document.cookie` (does not eliminate XSS risk entirely)
-- Server-side auth on every protected route
-- RBAC for admin endpoints
-- IDOR prevention: task reads/updates/deletes preceded by ownership-scoped `findFirst` on `userId`
-- Soft delete (`deletedAt`) for recoverability — not a full audit trail
-- Zod input validation
-- Rate limiting on auth routes
-- Helmet security headers
-- CORS restricted to `ALLOWED_ORIGIN`
-- Request ID header (`X-Request-Id`) on every response
-- Structured JSON logging (no secrets in logs)
-- Safe error responses (no stack traces to clients)
+1. CI green on the release branch  
+2. Secret scan sign-off ([docs/SECRET_SCAN.md](docs/SECRET_SCAN.md))  
+3. Production smoke test ([docs/SMOKE_TEST.md](docs/SMOKE_TEST.md))  
+4. Merge PR to `main`  
+5. Run deploy workflow  
+6. Tag `v1-platform-hosted`  
 
 ## Testing
 
+| Suite | Command | Location |
+|-------|---------|----------|
+| Backend integration | `cd backend && npm test` | `backend/tests/integration.test.js` |
+| Backend security | (same command) | `backend/tests/security.test.js` |
+| Frontend unit | `cd frontend && npm test` | `frontend/src/__tests__/` |
+| E2E | `npm run test:e2e` (repo root) | `e2e/user-journey.spec.ts` |
+| Local Docker | `docker compose up --build` | `docker-compose.yml` |
+
+Requires **Node.js 22** (see `.nvmrc`).
+
+## Known limitations
+
+- No refresh-token rotation or server-side session store.
+- No email verification or password reset.
+- Admin UI is API-only; dashboard is member-focused.
+- E2E covers one happy-path journey; not full cross-browser matrix.
+- `/health` does not verify database connectivity.
+- Phase 2 AWS infrastructure is documented but not provisioned.
+
+## Future improvements
+
+- AWS Phase 2 (ECS, RDS, CloudFront, Secrets Manager).
+- Refresh token rotation and/or opaque server-side sessions.
+- Email flows, 2FA, structured audit logging.
+- Readiness probe that checks PostgreSQL.
+- Expanded E2E (admin RBAC, password change, error states).
+- OpenAPI/Swagger from Zod schemas.
+
+## Quick start (local)
+
+**Prerequisites:** Node.js 22+, Docker (optional).
+
 ```bash
-# Backend integration tests (requires PostgreSQL; API-level, not browser E2E)
-cd backend && npm test
+# Terminal 1 — database
+docker compose up db -d
 
-# Frontend build
-cd frontend && npm run build
+# Terminal 2 — API
+cd backend && cp .env.example .env
+npm ci && npx prisma migrate deploy && npm run db:seed && npm run dev
 
-# Playwright scaffold (page render only; not full-stack auth/task flows yet)
-npm run test:e2e
+# Terminal 3 — UI
+cd frontend && cp .env.example .env
+npm ci && npm run dev
 ```
 
-## Docker (full stack)
+- Frontend: http://localhost:5173  
+- API: http://localhost:3000  
+- Seed users: `test@taskflow.local` / `password123`, `admin@taskflow.local` / `admin123`  
+
+**Full stack in Docker:**
 
 ```bash
 docker compose up --build
 ```
 
-## Phase 1 status
+## API overview
 
-Phase 1 is implemented on the `cursor/phase1-complete-e9fa` branch and is **undergoing CI, security, deployment, and end-to-end verification**. Do not merge or tag `v1-platform-hosted` until:
+Base path: `/api/v1`. Contract: [docs/api-contract.md](docs/api-contract.md).
 
-- GitHub Actions CI is green (backend tests + frontend build + audits)
-- Manual smoke test passes against deployed backend
-- `docs/PHASE1_CHECKLIST.md` is fully checked
-
-## Phase 1 completion checkpoint (after verification)
-
-When Phase 1 is complete, tag the repository:
-
-```bash
-git tag -a v1-platform-hosted -m "Phase 1: complete TaskFlow on Vercel/Render/Supabase"
-```
-
-## Known limitations
-
-- Stateless JWT refresh flow without refresh-token rotation or server-side revocation list
-- `GET /health` is liveness only — does not verify database connectivity
-- Soft delete uses `deletedAt`; not a full audit trail (no actor/change history)
-- Task updates use find-then-update, not atomic `updateMany` ownership queries
-- Playwright tests are a scaffold (login/register pages render only)
-- No email verification or password reset flow
-- Dashboard charts are summary cards only (no graph library)
-- Admin UI page not built in frontend (admin API available via API tools)
-- Render free tier cold starts (~30–60s)
-- Docker entrypoint runs `migrate deploy` on startup but does not guarantee drift-free production schema
-
-## Documentation
-
-- [Deployment guide](docs/DEPLOYMENT.md)
-- [API contract](docs/api-contract.md)
-- [Production smoke test](docs/SMOKE_TEST.md)
-- [Secret scan notes](docs/SECRET_SCAN.md)
-- [Phase 1 checklist](docs/PHASE1_CHECKLIST.md)
-- [Technical notes (accurate claims)](docs/TECHNICAL_NOTES.md)
-- [Changelog](CHANGELOG.md)
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Public / cookie |
+| PUT | `/auth/password` | Bearer |
+| GET, POST | `/tasks` | Bearer |
+| GET, PATCH, DELETE | `/tasks/:id` | Bearer |
+| GET | `/admin/stats`, `/admin/users` | Bearer + ADMIN |
 
 ## License
 
-ISC
+MIT — see [LICENSE](LICENSE).

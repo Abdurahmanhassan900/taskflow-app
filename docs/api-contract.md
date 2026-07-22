@@ -1,6 +1,6 @@
 # API Contract Document
 
-This document describes the **implemented** TaskFlow API as of branch `cursor/phase1-complete-e9fa`. Request and response shapes match the running code.
+This document describes the **implemented** TaskFlow API. Request and response shapes match the running code.
 
 **Base URL:** `/api/v1` (prepend your host, e.g. `http://localhost:3000/api/v1`)
 

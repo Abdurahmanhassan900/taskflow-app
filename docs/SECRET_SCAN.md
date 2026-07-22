@@ -1,7 +1,7 @@
 # Git history secret scan (manual review)
 
 **Scan date:** 2026-07-22  
-**Branch reviewed:** `cursor/phase1-complete-e9fa`
+**Revision reviewed:** Phase 1 release candidate (pre-`v1-platform-hosted`)
 
 ## How to re-run locally
 

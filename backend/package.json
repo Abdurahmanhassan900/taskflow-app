@@ -1,17 +1,19 @@
 {
-  "name": "backend",
+  "name": "taskflow-backend",
   "version": "1.0.0",
-  "description": "TaskFlow API server",
+  "description": "TaskFlow API server — Express, Prisma, PostgreSQL",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "lint": "npx prisma validate",
-    "test": "node --test tests/*.test.js"
-  },
-  "keywords": [],
-  "author": "",
+  "author": "TaskFlow Team",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "lint": "eslint . && prisma validate",
+    "test": "node --test tests/*.test.js"
+  },
   "dependencies": {
     "@prisma/adapter-pg": "7.9.0",
     "@prisma/client": "7.9.0",
@@ -27,6 +29,9 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "globals": "^17.4.0",
     "prisma": "7.9.0",
     "supertest": "^7.1.4",
     "tsx": "^4.20.3"
