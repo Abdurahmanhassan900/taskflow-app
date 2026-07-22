@@ -2,7 +2,9 @@
 
 All notable changes to TaskFlow are documented in this file.
 
-## [1.0.0] - 2026-07-21 — Phase 1 complete
+## [1.0.0] - Unreleased — Phase 1 (in verification)
+
+Phase 1 is implemented on branch `cursor/phase1-complete-e9fa` and is undergoing CI, security, deployment, and end-to-end verification. **Do not merge or tag until CI is green and manual checks pass.**
 
 ### Added
 

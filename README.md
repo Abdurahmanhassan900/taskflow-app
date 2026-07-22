@@ -146,7 +146,15 @@ npm run test:e2e
 docker compose up --build
 ```
 
-## Phase 1 completion checkpoint
+## Phase 1 status
+
+Phase 1 is implemented on the `cursor/phase1-complete-e9fa` branch and is **undergoing CI, security, deployment, and end-to-end verification**. Do not merge or tag `v1-platform-hosted` until:
+
+- GitHub Actions CI is green (backend tests + frontend build + audits)
+- Manual smoke test passes against deployed backend
+- `docs/PHASE1_CHECKLIST.md` is fully checked
+
+## Phase 1 completion checkpoint (after verification)
 
 When Phase 1 is complete, tag the repository:
 

@@ -79,7 +79,7 @@ jobs:
       - name: Build frontend
         run: cd frontend && npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: http://localhost:3000/api/v1
 
       # When Munir adds tests, uncomment this:
       # - name: Run frontend tests
