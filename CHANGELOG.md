@@ -22,15 +22,18 @@ Phase 1 is implemented on branch `cursor/phase1-complete-e9fa` and is undergoing
 - Backend integration tests (auth, tasks, IDOR, soft-delete, RBAC)
 - Docker entrypoint with automatic migrations
 - Frontend task create/delete and live dashboard stats
-- Playwright E2E test scaffold
+- Playwright E2E scaffold (page render + auth redirect; not full deployed-stack flow)
+- Frontend Vitest component tests
+- CI runs backend lint (`prisma validate`), frontend lint (ESLint), and frontend tests
 - README, DEPLOYMENT.md, and environment variable documentation
 
 ### Security
 
 - Removed hardcoded database credentials from application code
 - bcrypt password hashing (12 rounds)
-- httpOnly refresh token cookies
+- httpOnly refresh token cookies (not readable via `document.cookie`)
 - Production requires `JWT_SECRET` and `JWT_REFRESH_SECRET`
+- Prisma bumped to 7.9.0 (resolves dev-tooling audit findings)
 
 ### Known limitations
 

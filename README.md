@@ -180,6 +180,9 @@ git tag -a v1-platform-hosted -m "Phase 1: complete TaskFlow on Vercel/Render/Su
 
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [API contract](docs/api-contract.md)
+- [Production smoke test](docs/SMOKE_TEST.md)
+- [Secret scan notes](docs/SECRET_SCAN.md)
+- [Phase 1 checklist](docs/PHASE1_CHECKLIST.md)
 - [Technical notes (accurate claims)](docs/TECHNICAL_NOTES.md)
 - [Changelog](CHANGELOG.md)
 

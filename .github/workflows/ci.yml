@@ -22,6 +22,11 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
+      - name: Lint backend (Prisma schema)
+        run: cd backend && npm run lint
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
       - name: Generate Prisma client
         run: cd backend && npx prisma generate
         env:
@@ -73,6 +78,12 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Run frontend tests
+        run: cd frontend && npm test
+
       - name: Security audit (frontend)
         run: cd frontend && npm audit --audit-level=high
 
@@ -80,7 +91,3 @@ jobs:
         run: cd frontend && npm run build
         env:
           VITE_API_URL: http://localhost:3000/api/v1
-
-      # When Munir adds tests, uncomment this:
-      # - name: Run frontend tests
-      #   run: cd frontend && npm test
