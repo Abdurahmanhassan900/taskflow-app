@@ -94,10 +94,10 @@ App available at `http://localhost:5173`
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/health` | No | Health check |
+| GET | `/health` | No | Liveness check (process only; does not query the database) |
 | POST | `/api/v1/auth/register` | No | Create account |
 | POST | `/api/v1/auth/login` | No | Login |
-| POST | `/api/v1/auth/refresh` | Cookie | Refresh access token |
+| POST | `/api/v1/auth/refresh` | Cookie | Verify refresh cookie; return new access token (no refresh rotation) |
 | POST | `/api/v1/auth/logout` | Cookie | Logout |
 | PUT | `/api/v1/auth/password` | Yes | Change password |
 | GET | `/api/v1/tasks` | Yes | List own tasks |
@@ -114,11 +114,12 @@ Full contract: `docs/api-contract.md`
 ## Security features
 
 - bcrypt password hashing (12 rounds)
-- JWT access tokens (15 min) + refresh tokens in httpOnly cookies (7 days)
+- Stateless JWT refresh flow: short-lived access tokens + longer-lived refresh token in an httpOnly cookie (refresh endpoint returns a new access token only; no refresh rotation)
+- httpOnly refresh cookie: not readable via `document.cookie` (does not eliminate XSS risk entirely)
 - Server-side auth on every protected route
 - RBAC for admin endpoints
-- IDOR prevention: tasks scoped to `req.user.id`
-- Soft delete for users and tasks
+- IDOR prevention: task reads/updates/deletes preceded by ownership-scoped `findFirst` on `userId`
+- Soft delete (`deletedAt`) for recoverability — not a full audit trail
 - Zod input validation
 - Rate limiting on auth routes
 - Helmet security headers
@@ -130,13 +131,13 @@ Full contract: `docs/api-contract.md`
 ## Testing
 
 ```bash
-# Backend integration tests (requires PostgreSQL)
+# Backend integration tests (requires PostgreSQL; API-level, not browser E2E)
 cd backend && npm test
 
 # Frontend build
 cd frontend && npm run build
 
-# E2E (requires backend + frontend running)
+# Playwright scaffold (page render only; not full-stack auth/task flows yet)
 npm run test:e2e
 ```
 
@@ -164,16 +165,22 @@ git tag -a v1-platform-hosted -m "Phase 1: complete TaskFlow on Vercel/Render/Su
 
 ## Known limitations
 
-- Refresh tokens are stateless JWTs (cannot be revoked server-side without a token store)
+- Stateless JWT refresh flow without refresh-token rotation or server-side revocation list
+- `GET /health` is liveness only — does not verify database connectivity
+- Soft delete uses `deletedAt`; not a full audit trail (no actor/change history)
+- Task updates use find-then-update, not atomic `updateMany` ownership queries
+- Playwright tests are a scaffold (login/register pages render only)
 - No email verification or password reset flow
 - Dashboard charts are summary cards only (no graph library)
 - Admin UI page not built in frontend (admin API available via API tools)
 - Render free tier cold starts (~30–60s)
+- Docker entrypoint runs `migrate deploy` on startup but does not guarantee drift-free production schema
 
 ## Documentation
 
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [API contract](docs/api-contract.md)
+- [Technical notes (accurate claims)](docs/TECHNICAL_NOTES.md)
 - [Changelog](CHANGELOG.md)
 
 ## License

@@ -10,8 +10,9 @@ Use this checklist before tagging `v1-platform-hosted`.
 - [ ] `npx prisma db seed`
 - [ ] `npm test` — all tests pass
 - [ ] `npm start` — server boots
-- [ ] `GET /health` returns `{"status":"ok"}`
+- [ ] `GET /health` returns `{"status":"ok"}` (liveness only — does not prove DB connectivity)
 - [ ] Register + login + create task flow works via curl or frontend
+- [ ] Confirm DB reachable separately if needed (e.g. `npx prisma migrate status` or login flow)
 
 ## Frontend
 
@@ -30,8 +31,8 @@ Use this checklist before tagging `v1-platform-hosted`.
 ## Docker
 
 - [ ] `docker compose up --build` starts backend + database
-- [ ] Migrations apply on container startup
-- [ ] Health check passes at `http://localhost:3000/health`
+- [ ] Migrations apply on container startup (`prisma migrate deploy`; startup fails if migration fails)
+- [ ] Liveness check passes at `http://localhost:3000/health` (does not verify database)
 
 ## CI/CD
 
@@ -56,7 +57,10 @@ git push origin v1-platform-hosted
 
 ## Known limitations (documented, not blockers)
 
-- Stateless refresh tokens
+- Stateless JWT refresh flow without refresh-token rotation
+- Health endpoint is liveness only
+- Soft delete is not an audit trail
+- E2E tests are a scaffold only
 - No email verification
 - No admin UI in frontend
 - Render free tier cold starts

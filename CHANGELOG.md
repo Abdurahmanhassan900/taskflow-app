@@ -34,7 +34,10 @@ Phase 1 is implemented on branch `cursor/phase1-complete-e9fa` and is undergoing
 
 ### Known limitations
 
-- Stateless refresh tokens (no server-side revocation list)
+- Stateless JWT refresh flow (no refresh-token rotation; no server-side revocation list)
+- `GET /health` is liveness only — does not query PostgreSQL
+- Soft delete via `deletedAt` — not a full audit trail
+- Playwright E2E is a scaffold (page render checks only)
 - No email verification or password reset
 - Admin UI not implemented in frontend
 

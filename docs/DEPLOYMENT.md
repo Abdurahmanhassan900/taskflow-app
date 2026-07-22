@@ -58,9 +58,9 @@ postgresql://postgres.xxxx:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:6543/p
 | `NODE_ENV` | `production` |
 | `PORT` | `3000` |
 
-4. Deploy and verify: `GET https://your-render-url.onrender.com/health`
+4. Deploy and verify liveness: `GET https://your-render-url.onrender.com/health` (returns `status: ok`; does not query the database)
 
-The Docker entrypoint runs `prisma migrate deploy` automatically on startup.
+The Docker entrypoint runs `prisma migrate deploy` before startup. If migration fails, the container does not start. This applies pending migrations but does not guarantee drift-free or backward-compatible deployments.
 
 ## Step 3 — Frontend (Vercel)
 
@@ -97,11 +97,11 @@ Set `RENDER_DEPLOY_HOOK_URL` in GitHub Actions secrets.
 
 Render free tier sleeps after 15 minutes of inactivity.
 
-1. Visit `https://your-render-url.onrender.com/health` 5 minutes before demo
+1. Visit `https://your-render-url.onrender.com/health` 5 minutes before demo (wakes process; liveness only)
 2. Wait for `{"status":"ok"}`
-3. Open Vercel frontend and log in with a test account
+3. Open Vercel frontend and log in with a test account (confirms API + database path)
 
-Optional: use [UptimeRobot](https://uptimerobot.com) to ping `/health` every 5 minutes.
+Optional: use [UptimeRobot](https://uptimerobot.com) to ping `/health` every 5 minutes (keeps process warm; not a DB readiness check).
 
 ## Troubleshooting
 
