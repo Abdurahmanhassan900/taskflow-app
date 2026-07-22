@@ -58,20 +58,15 @@ This document defines the backend endpoints for the application.
 ### 1.3 Refresh Token
 - **URL:** `/api/v1/auth/refresh`
 - **Method:** `POST`
-- **Auth required:** No (but requires valid refresh token in body or HttpOnly cookie)
-- **Request body:**
-  ```json
-  {
-    "refreshToken": "jwt_refresh_token"
-  }
-  ```
+- **Auth required:** No (requires valid refresh token in httpOnly cookie)
+- **Request body:** None (refresh token sent via cookie)
 - **Response format:**
   ```json
   {
-    "accessToken": "new_jwt_access_token",
-    "refreshToken": "new_jwt_refresh_token"
+    "accessToken": "new_jwt_access_token"
   }
   ```
+- **Note:** Returns a new access token only. Does not rotate the refresh cookie (stateless JWT refresh flow).
 
 ### 1.4 Logout
 - **URL:** `/api/v1/auth/logout`
