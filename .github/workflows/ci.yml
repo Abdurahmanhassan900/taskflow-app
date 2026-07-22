@@ -109,7 +109,7 @@ jobs:
         run: |
           cd backend && npm ci
           cd ../frontend && npm ci
-          npm ci
+          cd .. && npm ci
           npx playwright install --with-deps chromium
 
       - name: Prepare database
