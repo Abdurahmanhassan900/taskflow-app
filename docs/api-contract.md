@@ -290,7 +290,7 @@ Require `Authorization: Bearer <accessToken>` and role `ADMIN`.
 
 ---
 
-## Approval
+## Maintainer verification
 
-- **Backend (Abdul):** ___________________ (Date: _________)
-- **Frontend (Munir):** ___________________ (Date: _________)
+- [ ] API contract reviewed against implementation (Date: _________)
+- [ ] Reviewer: ___________________

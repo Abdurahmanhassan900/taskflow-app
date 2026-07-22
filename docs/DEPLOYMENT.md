@@ -90,7 +90,7 @@ On Render, set `ALLOWED_ORIGIN` to your exact Vercel URL (no trailing slash). Th
 
 ### Deploy (merge to main)
 
-`.github/workflows/deploy.yml` runs on push to `main` (and can be triggered manually via **Actions → Deploy → Run workflow**).
+`.github/workflows/deploy.yml` runs on push to `main`.
 
 | Secret | Purpose |
 |--------|---------|

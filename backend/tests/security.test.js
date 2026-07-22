@@ -40,6 +40,13 @@ test('rejects refresh without a refresh cookie', async () => {
   await request(app).post('/api/v1/auth/refresh').expect(401);
 });
 
+test('rejects refresh with a malformed refresh cookie', async () => {
+  await request(app)
+    .post('/api/v1/auth/refresh')
+    .set('Cookie', 'refreshToken=not-a-valid-jwt')
+    .expect(401);
+});
+
 test('rejects register input that fails Zod validation', async () => {
   const response = await request(app)
     .post('/api/v1/auth/register')

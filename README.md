@@ -27,9 +27,9 @@ Teams need a simple way to track work without heavyweight project-management too
 |-------|------------|
 | Frontend | React 19, TypeScript, Vite, Tailwind, React Router |
 | Backend | Node.js 22, Express 5, Prisma 7, Zod |
-| Database | PostgreSQL 16 (Supabase in Phase 1) |
+| Database | PostgreSQL 15 (local/CI via Docker); Supabase in Phase 1 production |
 | Auth | JWT access token (JSON) + refresh token (httpOnly cookie) |
-| Containers | Docker Compose for local full-stack |
+| Containers | Docker Compose for local PostgreSQL + backend API |
 
 **Repository layout**
 
@@ -127,7 +127,7 @@ Phase 1 release candidate is undergoing final verification until all checklist g
 | Backend tests | `cd backend && npm test` | `backend/tests/*.test.js` |
 | Frontend unit | `cd frontend && npm test` | `frontend/src/__tests__/` |
 | E2E | `npm run test:e2e` (repo root) | `e2e/user-journey.spec.ts` |
-| Local Docker | `docker compose up --build` | `docker-compose.yml` |
+| Local Docker | `docker compose up --build` (PostgreSQL + backend only) | `docker-compose.yml` |
 
 CI E2E tests the happy-path browser journey against a local stack. It does **not** replace post-merge production smoke testing.
 
@@ -157,30 +157,34 @@ Abdurahman Hassan — project owner and primary maintainer; DevOps and security 
 
 ## Quick start (local)
 
-**Prerequisites:** Node.js 22+, Docker (optional).
+**Prerequisites:** Node.js 22+, Docker (optional, for PostgreSQL and/or backend container).
 
 ```bash
-# Terminal 1 — database
+# Terminal 1 — database (or use docker compose up db -d)
 docker compose up db -d
 
 # Terminal 2 — API
 cd backend && cp .env.example .env
-npm ci && npx prisma migrate deploy && npm run db:seed && npm run dev
+npm ci && npx prisma migrate deploy && npx prisma db seed && npm run dev
 
-# Terminal 3 — UI
+# Terminal 3 — UI (always run separately — not included in Docker Compose)
 cd frontend && cp .env.example .env
 npm ci && npm run dev
 ```
 
-- Frontend: http://localhost:5173  
-- API: http://localhost:3000  
-- Seed users: `test@taskflow.local` / `password123`, `admin@taskflow.local` / `admin123`  
+- Frontend: http://localhost:5173
+- API: http://localhost:3000
+- Seed users (password for both): `test@taskflow.local` and `admin@taskflow.local` / `local-dev-only-change-me`
 
-**Full stack in Docker:**
+**Docker Compose (PostgreSQL + backend only):**
 
 ```bash
 docker compose up --build
+# Backend: http://localhost:3000
+# Start the frontend separately: cd frontend && npm run dev
 ```
+
+Local development and CI use **PostgreSQL 15** (`postgres:15-alpine`). Supabase in production may run a different managed version.
 
 ## API overview
 
@@ -192,7 +196,9 @@ Base path: `/api/v1`. Contract: [docs/api-contract.md](docs/api-contract.md).
 | PUT | `/auth/password` | Bearer |
 | GET, POST | `/tasks` | Bearer |
 | GET, PUT, DELETE | `/tasks/:id` | Bearer |
-| GET | `/admin/stats`, `/admin/users` | Bearer + ADMIN |
+| GET | `/admin/users` | Bearer + ADMIN |
+| PUT | `/admin/users/:id/role` | Bearer + ADMIN |
+| DELETE | `/admin/users/:id` | Bearer + ADMIN |
 
 ## License
 
