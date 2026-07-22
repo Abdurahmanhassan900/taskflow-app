@@ -1,40 +1,45 @@
 # Git history secret scan (manual review)
 
 **Scan date:** 2026-07-22  
-**Revision reviewed:** Phase 1 release candidate (pre-`v1-platform-hosted`)
+**Status:** Phase 1 release candidate is undergoing final verification.
 
 ## How to re-run locally
 
 ```bash
-# Hardcoded Supabase-style credentials (removed from current branch tip)
-git log --all -p -G 'DevSecOps21|postgres\\.cwlrardjyfxneexevlmm' -- '*.js'
+# Search for historically committed database credentials (redacted patterns)
+git log --all -p -G '<REDACTED_DB_PASSWORD>|<REDACTED_SUPABASE_HOST>' -- '*.js'
 
 # Ensure no .env files were committed
 git log --all --name-only -- '*.env' ':!*.example'
 
-# TruffleHog or gitleaks (if installed)
+# Optional scanners (if installed)
 # gitleaks detect --source . -v
+# trufflehog git file://. --only-verified
 ```
+
+Replace `<REDACTED_DB_PASSWORD>` and `<REDACTED_SUPABASE_HOST>` with patterns from your own rotation records. Do not commit those values to the repository.
 
 ## Findings
 
 | Item | Status on current branch tip | Action |
-|---|---|---|
-| `DevSecOps21` in `backend/index.js` | **Removed** in Prisma/JWT branches | Rotate Supabase password if this value was ever used in production |
-| Hardcoded `postgres.cwlrardjyfxneexevlmm` user | **Removed** from current `index.js` | Confirm Render uses env vars only |
-| `backend/.env` | **Gitignored** — not in tree | Keep gitignored |
-| Test passwords in `backend/tests/` | Present (`Password1!`) | Test-only; acceptable |
-| Seed dev password in `prisma/seed.ts` | Present (`local-dev-only-change-me`) | Dev-only; document in README |
-| `docker-compose.yml` dev creds | `taskuser`/`taskpass` | Local dev only |
+|------|------------------------------|--------|
+| Hardcoded database password in early `backend/index.js` | **Removed** from current tree | Treat as **compromised** if it was ever deployed; rotate Supabase password |
+| Hardcoded Supabase pooler host/user in early commits | **Removed** from current tree | Confirm Render uses environment variables only |
+| `backend/.env` | **Gitignored** — not tracked | Keep gitignored |
+| Test passwords in `backend/tests/` | Present (test-only values) | Acceptable in test code only |
+| Seed dev password in `prisma/seed.ts` | Present (documented dev-only value) | Do not reuse in production |
+| `docker-compose.yml` dev credentials | Local-only `taskuser` / `taskpass` | Acceptable for local development |
 
 ## Recommendation
 
-1. **Rotate** Supabase database password if `DevSecOps21` or similar ever appeared in a deployed environment.
-2. **Rotate** `JWT_SECRET` and `JWT_REFRESH_SECRET` on Render if there is any doubt they were exposed.
-3. **Do not** rewrite public git history without team agreement; document rotation instead.
+1. Any credential that appeared in git history must be treated as **compromised** and **rotated** before production release.
+2. Rotate `JWT_SECRET` and `JWT_REFRESH_SECRET` on Render if there is any doubt they were exposed.
+3. Do **not** rewrite public git history without team agreement; document rotation instead.
 4. Re-run this scan before tagging `v1-platform-hosted`.
+
+**Rotation status:** Not verified as part of automated CI. A human maintainer must confirm rotation separately.
 
 ## Sign-off
 
 - [ ] Secret scan reviewed by: _______________
-- [ ] Production secrets rotated if needed: Yes / No / N/A
+- [ ] Historically exposed credentials rotated: Yes / No / N/A

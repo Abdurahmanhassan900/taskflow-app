@@ -42,5 +42,8 @@ test.describe('TaskFlow user journey', () => {
 
     await page.getByRole('button', { name: /logout/i }).click();
     await expect(page).toHaveURL(/\/login$/);
+
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login$/);
   });
 });

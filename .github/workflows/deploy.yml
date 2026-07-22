@@ -3,7 +3,6 @@ name: Deploy
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 concurrency:
   group: deploy-production
@@ -24,13 +23,10 @@ jobs:
 
       - name: Trigger Render deploy
         run: |
-          HTTP_CODE=$(curl -s -o /tmp/render-response.txt -w "%{http_code}" \
-            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
-          echo "Render hook response: $HTTP_CODE"
+          curl --fail-with-body --show-error --silent \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -o /tmp/render-response.txt
           cat /tmp/render-response.txt
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            exit 1
-          fi
 
   verify-backend:
     name: Verify backend health

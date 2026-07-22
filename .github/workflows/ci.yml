@@ -22,8 +22,11 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
-      - name: Lint backend
+      - name: Lint backend (JavaScript)
         run: cd backend && npm run lint
+
+      - name: Validate Prisma schema
+        run: cd backend && npm run prisma:validate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
 
@@ -142,3 +145,30 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+  docker:
+    name: Docker — Compose stack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and start stack
+        run: docker compose up --build -d
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health | grep -q '"status":"ok"'; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            echo "Attempt $i: waiting for backend..."
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+
+      - name: Shut down stack
+        if: always()
+        run: docker compose down

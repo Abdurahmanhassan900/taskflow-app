@@ -3,20 +3,22 @@
 ## Unreleased
 
 ### Added
-- Backend ESLint (`eslint.config.js`) — lint runs with `prisma validate` in CI
-- Security integration tests (`backend/tests/security.test.js`) — invalid JWT, missing refresh cookie, Zod validation, admin RBAC, no stack leak on 500
-- Playwright user journey (`e2e/user-journey.spec.ts`) — register, create task, delete, logout
-- CI E2E job with PostgreSQL service and Playwright Chromium
-- Deploy workflow health polling via optional `RENDER_HEALTH_URL`
-- Comprehensive README (problem, architecture, AWS Phase 2, security, deployment, CI/CD, testing, limitations)
+- Backend ESLint (`eslint.config.js`) with separate `npm run prisma:validate`
+- Security integration tests — cross-user update/delete, refresh/logout, admin RBAC, validation, error sanitization
+- Playwright user journey — register, task CRUD, logout, protected redirect
+- CI jobs: E2E (Playwright + PostgreSQL) and Docker Compose stack verification
+- Deploy workflow uses `curl --fail-with-body` for Render hook
+- `frontend/README.md` — TaskFlow frontend guide
+- Comprehensive README and Phase 1 checklist with correct pre/post-merge gates
 - `.github/CODEOWNERS` — @Abdurahmanhassan900
+- MIT `LICENSE`
 
 ### Changed
 - **Node.js 20 → 22** — `.nvmrc`, Dockerfiles, CI, `engines` in package.json files
-- Package metadata — `taskflow-app` / `taskflow-backend` / `taskflow-frontend`, author, repository URLs
-- Phase 1 checklist release order — CI → secret scan → smoke test → merge → deploy → tag
-- Removed obsolete docs (`Deployment_guide`, `Revised_plan`, `frontend/README.md`, `docs/E2E.md`)
-- API contract and deployment docs aligned with implementation (no branch-name references)
+- Package metadata — `taskflow-app` / `taskflow-backend` / `taskflow-frontend`
+- Neutralized `docs/TECHNICAL_NOTES.md` and redacted `docs/SECRET_SCAN.md`
+- Removed obsolete docs (`Deployment_guide`, `Revised_plan`, `docs/E2E.md`)
+- API contract and deployment docs aligned with implementation
 
 ### Security
 - Prisma 7.9.0 — resolves prior `npm audit` findings on backend

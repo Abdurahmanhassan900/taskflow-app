@@ -83,7 +83,7 @@ Details: [docs/TECHNICAL_NOTES.md](docs/TECHNICAL_NOTES.md), [docs/api-contract.
 ## Deployment process (Phase 1)
 
 1. **Database** — Supabase project; connection string with `?sslmode=require`.
-2. **Backend** — Render Web Service from `backend/Dockerfile`; env: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CORS_ORIGIN`, `NODE_ENV=production`.
+2. **Backend** — Render Web Service from `backend/Dockerfile`; env: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `ALLOWED_ORIGIN`, `NODE_ENV=production`.
 3. **Frontend** — Vercel; `VITE_API_URL=https://<api-host>/api/v1`.
 4. **Migrations** — `npx prisma migrate deploy` in Render build or via Docker entrypoint.
 5. **Smoke test** — [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) on production URLs before tagging.
@@ -92,40 +92,50 @@ Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## CI/CD process
 
-**CI** (`.github/workflows/ci.yml`) on push/PR to `main`:
+**CI** (`.github/workflows/ci.yml`) on pull requests to `main`:
 
 | Job | Steps |
 |-----|--------|
-| `backend` | PostgreSQL service → `npm ci` → ESLint + `prisma validate` → `prisma migrate deploy` → integration + security tests → `npm audit --audit-level=high` |
+| `backend` | PostgreSQL service → `npm ci` → ESLint → Prisma validate → generate → migrate → tests → audit |
 | `frontend` | `npm ci` → ESLint → Vitest → build → audit |
-| `e2e` | PostgreSQL → migrate + seed → Playwright user journey (register → task → delete → logout) |
+| `e2e` | PostgreSQL → generate → migrate → seed → Playwright user journey |
+| `docker` | `docker compose up --build` → `/health` liveness check → `docker compose down` |
 
-**Deploy** (`.github/workflows/deploy.yml`) on push to `main` (or manual **Run workflow**):
+**Deploy** (`.github/workflows/deploy.yml`) on push to `main` only:
 
-1. Optional Render deploy hook (`RENDER_DEPLOY_HOOK_URL`).
-2. Optional health poll (`RENDER_HEALTH_URL`, up to 12 × 10s).
-3. Vercel production deploy (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`).
+1. Requires `RENDER_DEPLOY_HOOK_URL` (workflow fails if missing).
+2. Triggers Render deploy via `curl --fail-with-body`.
+3. Optional `RENDER_HEALTH_URL` liveness polling after deploy.
+4. Vercel production deploy when connected to the `main` branch.
 
 **Release order** — [docs/PHASE1_CHECKLIST.md](docs/PHASE1_CHECKLIST.md):
 
-1. CI green on the release branch  
-2. Secret scan sign-off ([docs/SECRET_SCAN.md](docs/SECRET_SCAN.md))  
-3. Production smoke test ([docs/SMOKE_TEST.md](docs/SMOKE_TEST.md))  
-4. Merge PR to `main`  
-5. Run deploy workflow  
-6. Tag `v1-platform-hosted`  
+1. Pre-merge automated gates (CI green)
+2. Pre-merge manual gates (secret scan, config review)
+3. Merge PR to `main`
+4. Post-merge production smoke test ([docs/SMOKE_TEST.md](docs/SMOKE_TEST.md))
+5. Tag `v1-platform-hosted`
+
+Phase 1 release candidate is undergoing final verification until all checklist gates pass.
 
 ## Testing
 
 | Suite | Command | Location |
 |-------|---------|----------|
-| Backend integration | `cd backend && npm test` | `backend/tests/integration.test.js` |
-| Backend security | (same command) | `backend/tests/security.test.js` |
+| Backend lint | `cd backend && npm run lint` | `backend/eslint.config.js` |
+| Backend Prisma | `cd backend && npm run prisma:validate` | `backend/prisma/schema.prisma` |
+| Backend tests | `cd backend && npm test` | `backend/tests/*.test.js` |
 | Frontend unit | `cd frontend && npm test` | `frontend/src/__tests__/` |
 | E2E | `npm run test:e2e` (repo root) | `e2e/user-journey.spec.ts` |
 | Local Docker | `docker compose up --build` | `docker-compose.yml` |
 
+CI E2E tests the happy-path browser journey against a local stack. It does **not** replace post-merge production smoke testing.
+
 Requires **Node.js 22** (see `.nvmrc`).
+
+## Maintainer
+
+Abdurahman Hassan — project owner and primary maintainer; DevOps and security lead; responsible for backend integration, testing, release verification, and deployment.
 
 ## Known limitations
 
@@ -181,7 +191,7 @@ Base path: `/api/v1`. Contract: [docs/api-contract.md](docs/api-contract.md).
 | POST | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Public / cookie |
 | PUT | `/auth/password` | Bearer |
 | GET, POST | `/tasks` | Bearer |
-| GET, PATCH, DELETE | `/tasks/:id` | Bearer |
+| GET, PUT, DELETE | `/tasks/:id` | Bearer |
 | GET | `/admin/stats`, `/admin/users` | Bearer + ADMIN |
 
 ## License
