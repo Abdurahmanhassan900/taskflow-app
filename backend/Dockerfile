@@ -10,6 +10,8 @@ COPY prisma.config.ts ./
 
 RUN npm ci
 
+# Prisma config requires DATABASE_URL at generate time; runtime URL is supplied by the platform.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN npx prisma generate
 
 COPY . .
