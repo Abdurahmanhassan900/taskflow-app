@@ -1,66 +1,67 @@
+require('dotenv/config');
+
 const express = require('express');
-const { Pool } = require('pg');
-const { PrismaClient } = require('@prisma/client'); // New
-const { PrismaPg } = require('@prisma/adapter-pg'); // New
 const helmet = require('helmet');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
+const { pool } = require('./lib/prisma');
+const { requestId } = require('./middleware/requestId');
+const authRoutes = require('./routes/authRoutes');
+const tasksRoutes = require('./routes/tasksRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { logger } = require('./utils/logger');
+
 const app = express();
+const API_PREFIX = '/api/v1';
 
-// ==========================================
-// 1. SECURITY LAYER CONFIGURATION
-// ==========================================
+app.use(requestId);
 app.use(helmet());
-app.use(express.json());
 
-const allowedFrontendURL = process.env.ALLOWED_ORIGIN || 'https://taskflow-app-blush.vercel.app';
+const allowedFrontendURL = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
 app.use(cors({ origin: allowedFrontendURL, credentials: true }));
 
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5 });
+app.use(express.json());
+app.use(cookieParser());
 
-app.use(globalLimiter); 
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'test' ? 10_000 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
 
-// ==========================================
-// 2. DATABASE & INFRASTRUCTURE
-// ==========================================
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', requestId: req.requestId });
+});
 
-const poolConfig = {
-  host: process.env.DB_HOST || 'aws-0-us-west-2.pooler.supabase.com',
-  port: parseInt(process.env.DB_PORT || '6543', 10),
-  user: 'postgres.cwlrardjyfxneexevlmm',
-  password: process.env.DB_PASSWORD || 'DevSecOps21',
-  database: process.env.DB_NAME || 'postgres',
-  ssl: { rejectUnauthorized: false }
+app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/tasks`, tasksRoutes);
+app.use(`${API_PREFIX}/admin`, adminRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
+
+const startServer = async () => {
+  try {
+    await pool.connect();
+    logger.info('Connected to database and Prisma initialized');
+
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`, { apiPrefix: API_PREFIX });
+    });
+  } catch (err) {
+    logger.error('Database connection error', { error: err.message });
+    process.exit(1);
+  }
 };
 
-const pool = new Pool(poolConfig);
-const adapter = new PrismaPg(pool); // Create the adapter
-const prisma = new PrismaClient({ adapter }); // Pass adapter here
+if (require.main === module) {
+  startServer();
+}
 
-// ==========================================
-// 3. SERVER STARTUP
-// ==========================================
-
-pool.connect()
-  .then(() => {
-    console.log('Connected to Database and Prisma initialized');
-    
-    app.get('/health', (req, res) => res.json({ status: 'ok' }));
-    
-    // Example Prisma usage
-    app.get('/api/tasks', async (req, res) => {
-        const tasks = await prisma.task.findMany();
-        res.json(tasks);
-    });
-    
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log('Server running on port ' + PORT));
-  })
-  .catch(err => {
-    console.error('Database connection error', err);
-    process.exit(1);
-  });
+module.exports = app;

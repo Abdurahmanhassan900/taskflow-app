@@ -1,91 +1,109 @@
-import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
+const bcrypt = require('bcryptjs');
+const { prisma } = require('../lib/prisma');
+const { asyncHandler } = require('../utils/asyncHandler');
+const { ApiError } = require('../utils/ApiError');
+const {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} = require('../utils/tokens');
 
-// Instantiate the database client
-const prisma = new PrismaClient();
+const REFRESH_COOKIE = 'refreshToken';
+const BCRYPT_ROUNDS = 12;
 
-const DEFAULT_ACCESS_SECRET = 'temporary_development_access_secret_string_32_chars';
+const refreshCookieOptions = () => {
+  const isProd = process.env.NODE_ENV === 'production';
 
-export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const inboundEmail = req.body.email;
-    const inboundPassword = req.body.password;
-
-    if (!inboundEmail || !inboundPassword) {
-      return res.status(400).json({ error: 'Email and password are required.' });
-    }
-
-    const preExistingUser = await prisma.user.findUnique({
-      where: { email: inboundEmail }
-    });
-
-    if (preExistingUser) {
-      return res.status(409).json({ error: 'A user account with that email already exists.' });
-    }
-
-    const passwordSaltRounds = 10;
-    const encryptedPasswordString = await bcrypt.hash(inboundPassword, passwordSaltRounds);
-
-    const newlyCreatedUserRecord = await prisma.user.create({
-      data: {
-        email: inboundEmail,
-        password: encryptedPasswordString,
-        role: 'USER'
-      }
-    });
-
-    return res.status(201).json({
-      id: newlyCreatedUserRecord.id,
-      email: newlyCreatedUserRecord.email,
-      role: newlyCreatedUserRecord.role
-    });
-  } catch (err) {
-    return next(err);
-  }
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  };
 };
 
-export const loginUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const inboundEmail = req.body.email;
-    const inboundPassword = req.body.password;
+const publicUser = (user) => ({
+  id: user.id,
+  email: user.email,
+  fullName: user.fullName,
+  role: user.role,
+});
 
-    if (!inboundEmail || !inboundPassword) {
-      return res.status(400).json({ error: 'Email and password fields must be populated.' });
-    }
+const register = asyncHandler(async (req, res) => {
+  const { fullName, email, password } = req.body;
 
-    const targetUserRecord = await prisma.user.findUnique({
-      where: { email: inboundEmail }
-    });
+  const existing = await prisma.user.findFirst({
+    where: { email, deletedAt: null },
+  });
 
-    if (!targetUserRecord) {
-      return res.status(401).json({ error: 'Invalid authentication credentials.' });
-    }
-
-    const passwordMatchResult = await bcrypt.compare(inboundPassword, targetUserRecord.password);
-
-    if (!passwordMatchResult) {
-      return res.status(401).json({ error: 'Invalid authentication credentials.' });
-    }
-
-    const accessSigningKey = process.env.JWT_SECRET || DEFAULT_ACCESS_SECRET;
-
-    const shortTermAccessToken = jwt.sign(
-      { userId: targetUserRecord.id, role: targetUserRecord.role },
-      accessSigningKey,
-      { expiresIn: '15m' }
-    );
-
-    return res.status(200).json({
-      accessToken: shortTermAccessToken,
-      user: {
-        id: targetUserRecord.id,
-        email: targetUserRecord.email,
-        role: targetUserRecord.role
-      }
-    });
-  } catch (err) {
-    return next(err);
+  if (existing) {
+    throw new ApiError(409, 'An account with that email already exists');
   }
-};
+
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  const user = await prisma.user.create({
+    data: {
+      fullName,
+      email,
+      passwordHash,
+    },
+  });
+
+  res.cookie(REFRESH_COOKIE, signRefreshToken(user), refreshCookieOptions());
+  res.status(201).json({
+    accessToken: signAccessToken(user),
+    user: publicUser(user),
+  });
+});
+
+const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await prisma.user.findFirst({
+    where: { email, deletedAt: null },
+  });
+
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    throw new ApiError(401, 'Invalid email or password');
+  }
+
+  res.cookie(REFRESH_COOKIE, signRefreshToken(user), refreshCookieOptions());
+  res.status(200).json({
+    accessToken: signAccessToken(user),
+    user: publicUser(user),
+  });
+});
+
+const refresh = asyncHandler(async (req, res) => {
+  const token = req.cookies?.[REFRESH_COOKIE];
+
+  if (!token) {
+    throw new ApiError(401, 'No refresh token');
+  }
+
+  let payload;
+  try {
+    payload = verifyRefreshToken(token);
+  } catch {
+    throw new ApiError(401, 'Invalid refresh token');
+  }
+
+  const user = await prisma.user.findFirst({
+    where: { id: payload.userId, deletedAt: null },
+  });
+
+  if (!user) {
+    throw new ApiError(401, 'User no longer exists');
+  }
+
+  res.status(200).json({ accessToken: signAccessToken(user) });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: undefined });
+  res.status(200).json({ message: 'Logged out successfully' });
+});
+
+module.exports = { register, login, refresh, logout };

@@ -6,45 +6,86 @@ on:
 
 jobs:
   backend:
-    name: Backend — Lint, Test, Build
+    name: Backend — Lint, Test, Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
         run: cd backend && npm ci
 
+      - name: Lint backend (JavaScript)
+        run: cd backend && npm run lint
+
+      - name: Validate Prisma schema
+        run: cd backend && npm run prisma:validate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
+      - name: Generate Prisma client
+        run: cd backend && npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
+      - name: Run database migrations
+        run: cd backend && npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
+      - name: Run backend tests
+        run: cd backend && npm test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+          JWT_SECRET: ci_test_access_secret_at_least_32_chars
+          JWT_REFRESH_SECRET: ci_test_refresh_secret_at_least_32_chars
+
       - name: Security audit (backend)
         run: cd backend && npm audit --audit-level=high
-
-      # When Abdul adds tests, uncomment this:
-      # - name: Run backend tests
-      #   run: cd backend && npm test
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: taskflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d taskflow_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
   frontend:
-    name: Frontend — Lint, Test, Build
+    name: Frontend — Lint, Test, Build, Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Run frontend tests
+        run: cd frontend && npm test
 
       - name: Security audit (frontend)
         run: cd frontend && npm audit --audit-level=high
@@ -52,8 +93,82 @@ jobs:
       - name: Build frontend
         run: cd frontend && npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: http://localhost:3000/api/v1
 
-      # When Munir adds tests, uncomment this:
-      # - name: Run frontend tests
-      #   run: cd frontend && npm test
+  e2e:
+    name: E2E — Playwright user journey
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+          cd .. && npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Prepare database
+        run: |
+          cd backend
+          npx prisma generate
+          npx prisma migrate deploy
+          npx prisma db seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+        env:
+          CI: true
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskflow_test
+          JWT_SECRET: ci_test_access_secret_at_least_32_chars
+          JWT_REFRESH_SECRET: ci_test_refresh_secret_at_least_32_chars
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: taskflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d taskflow_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+  docker:
+    name: Docker — Compose stack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and start stack
+        run: docker compose up --build -d
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health | grep -q '"status":"ok"'; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            echo "Attempt $i: waiting for backend..."
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+
+      - name: Shut down stack
+        if: always()
+        run: docker compose down

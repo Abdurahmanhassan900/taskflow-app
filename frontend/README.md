@@ -1,73 +1,40 @@
-# React + TypeScript + Vite
+# TaskFlow frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React single-page application for TaskFlow. Users register, sign in, view a dashboard, and manage personal tasks through the Express API.
 
-Currently, two official plugins are available:
+## Environment variable
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Copy `.env.example` to `.env`:
 
-## React Compiler
+| Variable | Example | Purpose |
+|----------|---------|---------|
+| `VITE_API_URL` | `http://localhost:3000/api/v1` | Base URL for the Express API |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+In production (Vercel), set `VITE_API_URL` to your Render API URL including `/api/v1`.
 
-## Expanding the ESLint configuration
+## Commands
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start Vite dev server (default http://localhost:5173) |
+| `npm test` | Run Vitest unit tests |
+| `npm run lint` | Run ESLint |
+| `npm run build` | Type-check and produce production build in `dist/` |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Requires **Node.js 22** (see repo `.nvmrc`).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Relationship to the Express API
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The frontend stores the JWT access token in memory (Zustand) and sends it as `Authorization: Bearer <token>` on protected requests. The refresh token lives in an httpOnly cookie managed by the API; the browser sends it automatically on auth endpoints.
+
+API contract: [../docs/api-contract.md](../docs/api-contract.md)
+
+## Local development
+
+```bash
+cp .env.example .env
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Start the backend separately (see [../README.md](../README.md)) or use `docker compose up` from the repository root.

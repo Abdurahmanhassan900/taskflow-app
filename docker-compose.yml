@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:15-alpine
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: taskuser
       POSTGRES_PASSWORD: taskpass
@@ -22,11 +22,15 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://taskuser:taskpass@db:5432/taskdb
-      JWT_SECRET: dev_secret_change_me
+      JWT_SECRET: dev_access_secret_change_me_32_chars_min
+      JWT_REFRESH_SECRET: dev_refresh_secret_change_me_32_chars
+      ALLOWED_ORIGIN: http://localhost:5173
+      NODE_ENV: development
+      PORT: 3000
     depends_on:
       db:
         condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
 
 volumes:
   postgres_data:
