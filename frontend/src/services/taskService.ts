@@ -17,6 +17,13 @@ export interface CreateTaskInput {
   priority?: string;
 }
 
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string;
+  status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
 export const getTasks = async (): Promise<Task[]> => {
   const response = await api.get('/tasks');
   return response.data;
@@ -24,6 +31,11 @@ export const getTasks = async (): Promise<Task[]> => {
 
 export const createTask = async (data: CreateTaskInput): Promise<Task> => {
   const response = await api.post('/tasks', data);
+  return response.data;
+};
+
+export const updateTask = async (id: string, data: UpdateTaskInput): Promise<Task> => {
+  const response = await api.put(`/tasks/${id}`, data);
   return response.data;
 };
 
