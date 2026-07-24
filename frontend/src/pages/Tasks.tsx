@@ -23,13 +23,13 @@ const priorityClass = (priority: string) => {
   return 'text-gray-500';
 };
 
-const statusValue = (task: Task): UpdateTaskInput['status'] => {
+const statusValue = (task: Task): NonNullable<UpdateTaskInput['status']> => {
   if (task.statusValue === 'IN_PROGRESS' || task.status === 'In Progress') return 'IN_PROGRESS';
   if (task.statusValue === 'COMPLETED' || task.status === 'Completed') return 'COMPLETED';
   return 'TODO';
 };
 
-const priorityValue = (task: Task): UpdateTaskInput['priority'] => {
+const priorityValue = (task: Task): NonNullable<UpdateTaskInput['priority']> => {
   if (task.priorityValue === 'HIGH' || task.priority === 'High') return 'HIGH';
   if (task.priorityValue === 'LOW' || task.priority === 'Low') return 'LOW';
   return 'MEDIUM';
